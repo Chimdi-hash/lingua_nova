@@ -146,8 +146,33 @@ export default function Home() {
       </nav>
 
       <header className="header">
-        <h1 className="title">Decentralized Translator</h1>
-        <p className="subtitle">Powered by GenLayer's AI Consensus</p>
+        <div className="hero-badge">
+          <span className="hero-badge-dot"></span>
+          AI Consensus · 5 Validators · Studio Network
+        </div>
+        <h1 className="title">
+          <span className="title-line1">Decentralized</span>
+          <span className="title-line2">Language Intelligence</span>
+        </h1>
+        <p className="subtitle">
+          Real-time translation powered by <span className="subtitle-highlight">GenLayer's</span> multi-validator AI consensus
+        </p>
+        <div className="hero-stats">
+          <div className="stat-item">
+            <span className="stat-number">5</span>
+            <span className="stat-label">Validators</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+            <span className="stat-number">50+</span>
+            <span className="stat-label">Languages</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+            <span className="stat-number">100%</span>
+            <span className="stat-label">On-Chain</span>
+          </div>
+        </div>
       </header>
 
       <div className="glass-panel">
