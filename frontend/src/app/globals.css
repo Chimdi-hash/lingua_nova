@@ -163,15 +163,15 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -55%);
+  transform: translate(-50%, -42%);
   z-index: 0;
   pointer-events: none;
   animation: globeFloat 7s ease-in-out infinite;
 }
 
 @keyframes globeFloat {
-  0%, 100% { transform: translate(-50%, -55%) translateY(0px); }
-  50%       { transform: translate(-50%, -55%) translateY(-18px); }
+  0%, 100% { transform: translate(-50%, -42%) translateY(0px); }
+  50%       { transform: translate(-50%, -42%) translateY(-16px); }
 }
 
 /* Ensure hero text sits above the globe */
@@ -626,5 +626,15 @@ body {
   
   .bg-shape {
     display: none; /* Hide heavy blurred shapes on mobile to improve performance */
+  }
+
+  .globe-wrapper {
+    transform: translate(-50%, -42%) scale(0.52);
+    transform-origin: center center;
+  }
+
+  @keyframes globeFloat {
+    0%, 100% { transform: translate(-50%, -42%) scale(0.52) translateY(0px); }
+    50%       { transform: translate(-50%, -42%) scale(0.52) translateY(-10px); }
   }
 }
