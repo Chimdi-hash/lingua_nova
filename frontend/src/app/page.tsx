@@ -3,6 +3,9 @@
 import { useState, useEffect } from "react";
 import { createClient } from "genlayer-js";
 import { studionet } from "genlayer-js/chains";
+import dynamic from "next/dynamic";
+
+const GlobeCanvas = dynamic(() => import("./GlobeCanvas"), { ssr: false });
 
 // We assume the contract address will be provided in production, or hardcoded for the studio test
 const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder
@@ -139,23 +142,9 @@ export default function Home() {
         <div className="bg-shape shape-2"></div>
 
       <header className="header">
-        {/* Floating rotating globe */}
+        {/* Floating rotating canvas globe */}
         <div className="globe-wrapper" aria-hidden="true">
-          <div className="globe">
-            <div className="globe-ring ring-1"></div>
-            <div className="globe-ring ring-2"></div>
-            <div className="globe-ring ring-3"></div>
-            <div className="globe-line line-h1"></div>
-            <div className="globe-line line-h2"></div>
-            <div className="globe-line line-h3"></div>
-            <div className="globe-line line-v1"></div>
-            <div className="globe-line line-v2"></div>
-            <div className="globe-dot dot-1"></div>
-            <div className="globe-dot dot-2"></div>
-            <div className="globe-dot dot-3"></div>
-            <div className="globe-dot dot-4"></div>
-            <div className="globe-dot dot-5"></div>
-          </div>
+          <GlobeCanvas />
         </div>
 
         <div className="hero-badge">

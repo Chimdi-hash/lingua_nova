@@ -169,103 +169,12 @@ body {
   animation: globeFloat 7s ease-in-out infinite;
 }
 
-.globe {
-  width: 420px;
-  height: 420px;
-  border-radius: 50%;
-  position: relative;
-  background: radial-gradient(
-    circle at 35% 35%,
-    rgba(129, 140, 248, 0.07) 0%,
-    rgba(79, 70, 229, 0.04) 40%,
-    rgba(8, 12, 20, 0.0) 70%
-  );
-  border: 1px solid rgba(129, 140, 248, 0.12);
-  box-shadow:
-    0 0 60px rgba(79, 70, 229, 0.08),
-    inset 0 0 60px rgba(79, 70, 229, 0.04);
-  animation: globeSpin 22s linear infinite;
-  overflow: visible;
-}
-
-/* Latitude rings */
-.globe-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(129, 140, 248, 0.18);
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.ring-1 {
-  width: 100%;
-  height: 40%;
-  border-color: rgba(34, 211, 238, 0.15);
-  transform: translate(-50%, -50%) rotateX(75deg);
-}
-
-.ring-2 {
-  width: 100%;
-  height: 70%;
-  border-color: rgba(129, 140, 248, 0.12);
-  transform: translate(-50%, -50%) rotateX(75deg);
-}
-
-.ring-3 {
-  width: 100%;
-  height: 95%;
-  border-color: rgba(168, 85, 247, 0.10);
-  transform: translate(-50%, -50%) rotateX(75deg);
-}
-
-/* Longitude arcs */
-.globe-line {
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  left: 0;
-  top: 0;
-  border: 1px solid rgba(129, 140, 248, 0.13);
-}
-
-.line-h1 { transform: rotateY(0deg) rotateX(90deg); }
-.line-h2 { transform: rotateY(60deg) rotateX(90deg); border-color: rgba(34, 211, 238, 0.1); }
-.line-h3 { transform: rotateY(120deg) rotateX(90deg); border-color: rgba(168, 85, 247, 0.1); }
-.line-v1 { transform: rotateY(30deg); }
-.line-v2 { transform: rotateY(90deg); border-color: rgba(34, 211, 238, 0.12); }
-
-/* Language node dots */
-.globe-dot {
-  position: absolute;
-  border-radius: 50%;
-  background: var(--cyan);
-  box-shadow: 0 0 8px var(--cyan), 0 0 16px rgba(34, 211, 238, 0.4);
-}
-
-.dot-1 { width: 6px; height: 6px; top: 22%; left: 30%; animation: dotPulse 2.5s infinite; }
-.dot-2 { width: 5px; height: 5px; top: 40%; left: 68%; background: #a855f7; box-shadow: 0 0 8px #a855f7; animation: dotPulse 3s 0.5s infinite; }
-.dot-3 { width: 7px; height: 7px; top: 65%; left: 45%; animation: dotPulse 2s 1s infinite; }
-.dot-4 { width: 4px; height: 4px; top: 30%; left: 72%; background: #818cf8; box-shadow: 0 0 6px #818cf8; animation: dotPulse 3.5s 0.8s infinite; }
-.dot-5 { width: 5px; height: 5px; top: 75%; left: 25%; background: #c084fc; box-shadow: 0 0 8px #c084fc; animation: dotPulse 2.8s 1.5s infinite; }
-
-@keyframes globeSpin {
-  from { transform: rotateY(0deg) rotateX(15deg); }
-  to   { transform: rotateY(360deg) rotateX(15deg); }
-}
-
 @keyframes globeFloat {
   0%, 100% { transform: translate(-50%, -55%) translateY(0px); }
   50%       { transform: translate(-50%, -55%) translateY(-18px); }
 }
 
-@keyframes dotPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.4; transform: scale(1.6); }
-}
-
-/* Ensure header content sits above the globe */
+/* Ensure hero text sits above the globe */
 .hero-badge,
 .title,
 .subtitle,
