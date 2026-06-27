@@ -32,7 +32,7 @@ body {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 6rem 2rem 2rem; /* Added top padding for absolute navbar */
+  padding: 8rem 2rem 2rem; /* Adjusted for fixed header */
   width: 100%;
   flex: 1;
   display: flex;
@@ -41,17 +41,23 @@ body {
   animation: slideUp 0.8s ease-out forwards;
 }
 
-/* Navbar */
+/* Beautiful Header Navbar */
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 2rem;
+  padding: 1rem 3rem;
   width: 100%;
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
-  z-index: 10;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
 }
 
 .logo-text {
@@ -332,11 +338,11 @@ body {
   }
   
   .container {
-    padding: 5rem 1rem 1rem;
+    padding: 7rem 1rem 1rem;
   }
 
   .navbar {
-    padding: 1rem;
+    padding: 0.8rem 1rem;
   }
 
   .logo-text {
