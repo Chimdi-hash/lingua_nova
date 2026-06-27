@@ -96,6 +96,39 @@ body {
   display: none;
 }
 
+/* Concise navbar button — distinct from the main translate button */
+.nav-btn {
+  padding: 0.4rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  border-radius: 8px;
+  border: 1px solid rgba(129, 140, 248, 0.5);
+  background: rgba(79, 70, 229, 0.15);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  background: rgba(79, 70, 229, 0.35);
+  border-color: rgba(129, 140, 248, 0.9);
+  box-shadow: 0 0 12px rgba(79, 70, 229, 0.3);
+}
+
+.nav-btn.disconnect-button {
+  border-color: rgba(239, 68, 68, 0.4);
+  background: rgba(239, 68, 68, 0.08);
+  color: #f87171;
+}
+
+.nav-btn.disconnect-button:hover {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: rgba(239, 68, 68, 0.7);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+}
+
 .connected-badge {
   background: rgba(79, 70, 229, 0.2);
   border: 1px solid rgba(79, 70, 229, 0.5);

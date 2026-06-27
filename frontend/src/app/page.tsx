@@ -112,38 +112,31 @@ export default function Home() {
   };
 
   return (
-    <div className="container">
-      <div className="bg-shape shape-1"></div>
-      <div className="bg-shape shape-2"></div>
-      
+    <>
       <nav className="navbar">
-        <div className="logo-container">
-          <div className="logo-text">LinguaNova</div>
-        </div>
+        <div className="logo-text">LinguaNova</div>
         <div className="wallet-container">
           {account ? (
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <div className="connected-badge">
                 <span className="dot"></span>
                 {account.slice(0, 6)}...{account.slice(-4)}
               </div>
-              <button 
-                className="button wallet-button disconnect-button" 
-                onClick={handleDisconnect}
-              >
+              <button className="nav-btn disconnect-button" onClick={handleDisconnect}>
                 Disconnect
               </button>
             </div>
           ) : (
-            <button 
-              className="button wallet-button" 
-              onClick={() => initClient(true)}
-            >
+            <button className="nav-btn" onClick={() => initClient(true)}>
               Connect Wallet
             </button>
           )}
         </div>
       </nav>
+
+      <div className="container">
+        <div className="bg-shape shape-1"></div>
+        <div className="bg-shape shape-2"></div>
 
       <header className="header">
         <div className="hero-badge">
@@ -235,6 +228,6 @@ export default function Home() {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
