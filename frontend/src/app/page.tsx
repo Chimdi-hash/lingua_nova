@@ -110,23 +110,30 @@ export default function Home() {
       <div className="bg-shape shape-1"></div>
       <div className="bg-shape shape-2"></div>
       
+      <nav className="navbar">
+        <div className="logo-container">
+          <div className="logo-text">LinguaNova</div>
+        </div>
+        <div className="wallet-container">
+          {account ? (
+            <div className="connected-badge">
+              <span className="dot"></span>
+              {account.slice(0, 6)}...{account.slice(-4)}
+            </div>
+          ) : (
+            <button 
+              className="button wallet-button" 
+              onClick={() => initClient(true)}
+            >
+              Connect Wallet
+            </button>
+          )}
+        </div>
+      </nav>
+
       <header className="header">
-        <h1 className="title">LinguaNova</h1>
-        <p className="subtitle">Decentralized AI Translator Powered by GenLayer</p>
-        
-        {account ? (
-          <p style={{ marginTop: '1rem', color: 'var(--primary-hover)', fontSize: '0.9rem' }}>
-            Connected: {account.slice(0, 6)}...{account.slice(-4)}
-          </p>
-        ) : (
-          <button 
-            className="button" 
-            style={{ marginTop: '1rem', width: 'auto', padding: '0.5rem 1.5rem' }}
-            onClick={() => initClient(true)}
-          >
-            Connect Wallet
-          </button>
-        )}
+        <h1 className="title">Decentralized Translator</h1>
+        <p className="subtitle">Powered by GenLayer's AI Consensus</p>
       </header>
 
       <div className="glass-panel">

@@ -32,13 +32,63 @@ body {
 .container {
   max-width: 800px;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 6rem 2rem 2rem; /* Added top padding for absolute navbar */
   width: 100%;
   flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
   animation: slideUp 0.8s ease-out forwards;
+}
+
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 2rem;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+}
+
+.logo-text {
+  font-size: 1.8rem;
+  font-weight: 800;
+  background: linear-gradient(to right, #818cf8, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.wallet-button {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+  width: auto;
+}
+
+.connected-badge {
+  background: rgba(79, 70, 229, 0.2);
+  border: 1px solid rgba(79, 70, 229, 0.5);
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  background-color: #10b981;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 8px #10b981;
 }
 
 .header {
@@ -278,11 +328,24 @@ body {
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .title {
-    font-size: 2.2rem;
+    font-size: 2rem;
   }
   
   .container {
+    padding: 5rem 1rem 1rem;
+  }
+
+  .navbar {
     padding: 1rem;
+  }
+
+  .logo-text {
+    font-size: 1.4rem;
+  }
+
+  .wallet-button, .connected-badge {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.8rem;
   }
   
   .glass-panel {
