@@ -228,6 +228,12 @@ export default function Home() {
           </div>
         )}
       </div>
+
+        <div className="built-on">
+          <span className="built-on-dot"></span>
+          Built on <span className="built-on-highlight">GenLayer Studio</span>
+        </div>
+
       </div>
     </>
   );

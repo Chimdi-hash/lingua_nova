@@ -427,6 +427,33 @@ body {
   line-height: 1.6;
 }
 
+/* Built on Studio badge */
+.built-on {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 1.2rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+.built-on-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+  display: inline-block;
+}
+
+.built-on-highlight {
+  color: #818cf8;
+  font-weight: 700;
+}
+
 /* Animations */
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(40px); }
