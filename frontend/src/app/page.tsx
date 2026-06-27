@@ -99,7 +99,7 @@ export default function Home() {
       // We assume the translated text is in the event logs or we can just fetch the history.
       // Since our contract returns the string, we might not easily get the return value from writeContract 
       // in all cases without an event, but let's refresh history to get the latest.
-      await fetchHistory(client, account);
+      await fetchHistory(client, account!);
       
       // For simplicity in this demo, since we didn't emit an event, we'll grab the latest history item
       alert("Translation completed successfully!");
@@ -227,6 +227,7 @@ export default function Home() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </>
   );
