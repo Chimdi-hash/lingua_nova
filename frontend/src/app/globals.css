@@ -225,6 +225,35 @@ body {
   animation: shimmer 4s ease-in-out infinite;
 }
 
+/* Welcome entrance animations */
+.animate-title-1 {
+  opacity: 0;
+  animation: titleSlideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.2s forwards;
+}
+
+.animate-title-2 {
+  opacity: 0;
+  animation: titleSlideUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) 0.55s forwards,
+             shimmer 4s ease-in-out 1.5s infinite;
+  background-size: 200% 200%;
+}
+
+@keyframes titleSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) skewY(2deg);
+    filter: blur(8px);
+  }
+  60% {
+    filter: blur(0px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) skewY(0deg);
+    filter: blur(0px);
+  }
+}
+
 @keyframes shimmer {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }

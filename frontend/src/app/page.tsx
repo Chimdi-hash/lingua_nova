@@ -144,8 +144,8 @@ export default function Home() {
           AI Consensus · 5 Validators · Studio Network
         </div>
         <h1 className="title">
-          <span className="title-line1">Decentralized</span>
-          <span className="title-line2">Language Intelligence</span>
+          <span className="title-line1 animate-title-1">Decentralized</span>
+          <span className="title-line2 animate-title-2">Language Intelligence</span>
         </h1>
         <p className="subtitle">
           Real-time translation powered by <span className="subtitle-highlight">GenLayer's</span> multi-validator AI consensus
