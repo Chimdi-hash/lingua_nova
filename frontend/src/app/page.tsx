@@ -66,6 +66,12 @@ export default function Home() {
     }
   }, [client, account]);
 
+  const handleDisconnect = () => {
+    setAccount(null);
+    setClient(null);
+    setHistory([]);
+  };
+
   const handleTranslate = async () => {
     if (!text) return;
     if (text.length > 200) {
@@ -116,9 +122,17 @@ export default function Home() {
         </div>
         <div className="wallet-container">
           {account ? (
-            <div className="connected-badge">
-              <span className="dot"></span>
-              {account.slice(0, 6)}...{account.slice(-4)}
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <div className="connected-badge">
+                <span className="dot"></span>
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </div>
+              <button 
+                className="button wallet-button disconnect-button" 
+                onClick={handleDisconnect}
+              >
+                Disconnect
+              </button>
             </div>
           ) : (
             <button 
