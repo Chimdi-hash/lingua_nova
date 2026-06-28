@@ -8,7 +8,7 @@ import dynamic from "next/dynamic";
 const GlobeCanvas = dynamic(() => import("./GlobeCanvas"), { ssr: false });
 
 // We assume the contract address will be provided in production, or hardcoded for the studio test
-const CONTRACT_ADDRESS = "0x0000000000000000000000000000000000000000"; // Placeholder
+const CONTRACT_ADDRESS = "0x7697E3a0744b6dFA5d8B670d9bD916445a923647";
 
 export default function Home() {
   const [text, setText] = useState("");
