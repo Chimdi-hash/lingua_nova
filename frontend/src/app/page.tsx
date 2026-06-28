@@ -100,6 +100,7 @@ export default function Home() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "translate",
         args: [text, targetLang],
+        value: 0n,
       });
       
       // Wait for transaction receipt
