@@ -632,11 +632,11 @@ body {
   }
 
   .globe-wrapper {
-    transform: translateY(-42%) scale(0.52);
+    transform: translateY(-65%) scale(0.52);
   }
 
   @keyframes globeFloat {
-    0%, 100% { transform: translateY(-42%) scale(0.52); }
-    50%       { transform: translateY(calc(-42% - 10px)) scale(0.52); }
+    0%, 100% { transform: translateY(-65%) scale(0.52); }
+    50%       { transform: translateY(calc(-65% - 10px)) scale(0.52); }
   }
 }
