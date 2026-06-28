@@ -81,34 +81,42 @@ export default function Home() {
       alert("Text exceeds 200 characters.");
       return;
     }
-    if (!client || !account) {
+    if (!account) {
       await initClient(true);
-      if (!client) return;
+      if (!account) return;
     }
 
     setIsTranslating(true);
     setTranslation("");
     try {
+      // Re-create client to ensure fresh nonce/state
+      const currentClient = createClient({
+        chain: studionet,
+        account: account as `0x${string}`,
+      });
+
       // Trigger the contract transaction
-      const hash = await client.writeContract({
+      const hash = await currentClient.writeContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "translate",
         args: [text, targetLang],
       });
       
       // Wait for transaction receipt
-      const receipt = await client.waitForTransactionReceipt({ hash });
+      const receipt = await currentClient.waitForTransactionReceipt({ hash });
       
-      // We assume the translated text is in the event logs or we can just fetch the history.
-      // Since our contract returns the string, we might not easily get the return value from writeContract 
-      // in all cases without an event, but let's refresh history to get the latest.
-      await fetchHistory(client, account!);
+      await fetchHistory(currentClient, account);
       
-      // For simplicity in this demo, since we didn't emit an event, we'll grab the latest history item
       alert("Translation completed successfully!");
-    } catch (error) {
+      setText(""); // Clear text to prevent duplicate identical transactions
+    } catch (error: any) {
       console.error("Translation error:", error);
-      alert("Error performing translation.");
+      const errMsg = error.message || String(error);
+      alert(
+        "Translation failed.\n\n" +
+        "If you are running back-to-back translations, the Studio network AI rate limit might be kicking in, or the 5 validators could not reach 100% identical consensus on the translation.\n\n" +
+        "Details: " + errMsg.substring(0, 150) + "..."
+      );
     } finally {
       setIsTranslating(false);
     }
