@@ -1,145 +1,109 @@
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 
 import json
+from dataclasses import dataclass
 from genlayer import *
 
 
+@allow_storage
+@dataclass
+class TranslationRecord:
+    id: str
+    user: str
+    original_text: str
+    target_language: str
+    translated_text: str
+
+
 class LinguaNova(gl.Contract):
-    # Persistent storage - each user maps to a list of translation records
-    # Each record stored as a JSON string for simplicity
-    translations: DynArray[str]
-    user_tx_count: TreeMap[str, int]
+    translations: TreeMap[str, TranslationRecord]
+    user_translation_ids: TreeMap[Address, TreeMap[str, bool]]
+    total_count: u256
 
     def __init__(self):
-        self.translations = DynArray[str]()
-        self.user_tx_count = TreeMap()
+        pass
+
+    def _get_translation(self, text: str, target_language: str) -> str:
+        """
+        Non-deterministic translation function.
+        Each of the 5 validators independently calls the LLM.
+        gl.eq_principle.strict_eq ensures they all agree on the result.
+        """
+        def get_translation_result() -> str:
+            prompt = f"""You are an expert professional translator.
+
+Translate the text below into {target_language}.
+
+Rules:
+- Return ONLY a valid JSON object
+- Use exactly this format: {{"translation": "<translated text>"}}
+- Do not include any explanation, notes, quotes, or extra text
+- The translation must be accurate, natural, and complete
+
+Text to translate:
+{text}
+
+It is mandatory that you respond only using the JSON format above, nothing else.
+Your output must be perfectly parsable by a JSON parser without errors."""
+
+            result = gl.nondet.exec_prompt(prompt, response_format="json")
+            return json.dumps(result, sort_keys=True)
+
+        # All 5 validators run get_translation_result independently and must agree
+        consensus_json = gl.eq_principle.strict_eq(get_translation_result)
+        result_data = json.loads(consensus_json)
+        return result_data.get("translation", "").strip()
 
     @gl.public.write
     def translate(self, text: str, target_language: str) -> str:
-        """
-        Translates text into the target language.
-        The 5 GenLayer validators each independently call the LLM,
-        then reach consensus on the best translation via validator_fn.
-        """
         if len(text) == 0:
             raise Exception("Text cannot be empty.")
         if len(text) > 200:
             raise Exception("Text exceeds 200 character limit.")
 
-        # --- Non-deterministic leader function (run by the leader validator) ---
-        def leader_fn() -> str:
-            prompt = f"""You are an expert professional translator with deep knowledge of linguistics.
+        translated_text = self._get_translation(text, target_language)
 
-Task: Translate the text below into {target_language}.
+        sender = gl.message.sender_address
+        record_id = f"{sender.as_hex}_{int(self.total_count)}"
 
-Rules:
-- Return ONLY a valid JSON object with a single key "translation"
-- The value must be the translated text in {target_language}
-- Do NOT include any explanation, notes, or extra text
-- Preserve the original tone and style
+        record = TranslationRecord(
+            id=record_id,
+            user=sender.as_hex,
+            original_text=text,
+            target_language=target_language,
+            translated_text=translated_text,
+        )
 
-Text to translate:
-\"\"\"{text}\"\"\"
+        self.translations[record_id] = record
 
-Response format:
-{{"translation": "<translated text here>"}}"""
+        if sender not in self.user_translation_ids:
+            self.user_translation_ids.get_or_insert_default(sender)[record_id] = True
+        else:
+            self.user_translation_ids[sender][record_id] = True
 
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            return result
-
-        # --- Validator function (run by each of the other 4 validators) ---
-        def validator_fn(leader_result) -> bool:
-            """
-            Each validator independently translates the text and checks if
-            the leader's result is semantically equivalent to their own.
-            """
-            if not isinstance(leader_result, gl.vm.Return):
-                return False
-
-            try:
-                leader_data = json.loads(leader_result.calldata)
-                leader_translation = leader_data.get("translation", "").strip()
-                if not leader_translation:
-                    return False
-            except Exception:
-                return False
-
-            # Each validator does their own independent translation
-            validation_prompt = f"""You are an expert professional translator.
-
-Your job is to validate a translation.
-
-Original text: \"\"\"{text}\"\"\"
-Target language: {target_language}
-Translation to validate: \"\"\"{leader_translation}\"\"\"
-
-Is this translation accurate, natural, and complete in {target_language}?
-
-Return ONLY this JSON:
-{{"is_valid": true}} if the translation is correct and high quality
-{{"is_valid": false}} if the translation is wrong, incomplete, or unnatural"""
-
-            validation_result = gl.nondet.exec_prompt(
-                validation_prompt, response_format="json"
-            )
-
-            try:
-                validation_data = json.loads(validation_result)
-                return validation_data.get("is_valid", False)
-            except Exception:
-                return False
-
-        # Run the non-deterministic block — leader translates, validators judge
-        consensus_result = gl.vm.run_nondet_unsafe(leader_fn, validator_fn)
-
-        # Parse the consensus translation
-        try:
-            result_data = json.loads(consensus_result)
-            translated_text = result_data.get("translation", "").strip()
-        except Exception:
-            translated_text = str(consensus_result).strip()
-
-        # Store the record
-        sender = str(gl.message.sender_address)
-        record = json.dumps({
-            "user": sender,
-            "original_text": text,
-            "target_language": target_language,
-            "translated_text": translated_text,
-        })
-        self.translations.append(record)
-
-        # Track count per user
-        current_count = self.user_tx_count.get(sender, 0)
-        self.user_tx_count[sender] = current_count + 1
+        self.total_count += 1
 
         return translated_text
 
     @gl.public.view
     def get_translation_history(self, user_address: str) -> list:
-        """Returns all translations made by a specific user address."""
+        addr = Address(user_address)
+        if addr not in self.user_translation_ids:
+            return []
+
         history = []
-        for raw in self.translations:
-            try:
-                record = json.loads(raw)
-                if record.get("user", "").lower() == user_address.lower():
-                    history.append(record)
-            except Exception:
-                continue
+        for rid in self.user_translation_ids[addr]:
+            if rid in self.translations:
+                rec = self.translations[rid]
+                history.append({
+                    "id": rec.id,
+                    "user": rec.user,
+                    "original_text": rec.original_text,
+                    "target_language": rec.target_language,
+                    "translated_text": rec.translated_text,
+                })
         return history
 
     @gl.public.view
-    def get_all_translations(self) -> list:
-        """Returns all translations ever made (admin/debug view)."""
-        results = []
-        for raw in self.translations:
-            try:
-                results.append(json.loads(raw))
-            except Exception:
-                continue
-        return results
-
-    @gl.public.view
     def get_total_count(self) -> int:
-        """Returns total number of translations performed."""
-        return len(self.translations)
+        return int(self.total_count)
