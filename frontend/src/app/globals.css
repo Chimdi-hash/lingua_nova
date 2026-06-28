@@ -162,16 +162,19 @@ body {
 .globe-wrapper {
   position: absolute;
   top: 50%;
-  left: 50%;
-  transform: translate(-50%, -42%);
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  transform: translateY(-42%);
   z-index: 0;
   pointer-events: none;
   animation: globeFloat 7s ease-in-out infinite;
 }
 
 @keyframes globeFloat {
-  0%, 100% { transform: translate(-50%, -42%) translateY(0px); }
-  50%       { transform: translate(-50%, -42%) translateY(-16px); }
+  0%, 100% { transform: translateY(-42%); }
+  50%       { transform: translateY(calc(-42% - 16px)); }
 }
 
 /* Ensure hero text sits above the globe */
@@ -629,12 +632,11 @@ body {
   }
 
   .globe-wrapper {
-    transform: translate(-50%, -42%) scale(0.52);
-    transform-origin: center center;
+    transform: translateY(-42%) scale(0.52);
   }
 
   @keyframes globeFloat {
-    0%, 100% { transform: translate(-50%, -42%) scale(0.52) translateY(0px); }
-    50%       { transform: translate(-50%, -42%) scale(0.52) translateY(-10px); }
+    0%, 100% { transform: translateY(-42%) scale(0.52); }
+    50%       { transform: translateY(calc(-42% - 10px)) scale(0.52); }
   }
 }
