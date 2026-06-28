@@ -3,6 +3,7 @@
 import json
 from dataclasses import dataclass
 from genlayer import *
+import genlayer.gl.vm as glvm
 
 
 @allow_storage
@@ -17,42 +18,96 @@ class TranslationRecord:
 
 class LinguaNova(gl.Contract):
     translations: TreeMap[str, TranslationRecord]
-    user_translation_ids: TreeMap[Address, TreeMap[str, bool]]
+    # Nested TreeMap workaround: store list of IDs as JSON string per user
+    user_index: TreeMap[str, str]
     total_count: u256
 
     def __init__(self):
-        pass
+        self.user_index = TreeMap()
+        self.total_count = u256(0)
 
-    def _get_translation(self, text: str, target_language: str) -> str:
+    def _do_translate(self, text: str, target_language: str) -> str:
         """
-        Non-deterministic translation function.
-        Each of the 5 validators independently calls the LLM.
-        gl.eq_principle.strict_eq ensures they all agree on the result.
+        Leader validator translates the text via LLM.
+        Each of the other 4 validators independently checks whether the
+        leader's translation is accurate — this is the consensus mechanism.
         """
-        def get_translation_result() -> str:
+
+        def leader_fn() -> dict:
             prompt = f"""You are an expert professional translator.
 
-Translate the text below into {target_language}.
+Translate the following text into {target_language}.
 
 Rules:
-- Return ONLY a valid JSON object
-- Use exactly this format: {{"translation": "<translated text>"}}
-- Do not include any explanation, notes, quotes, or extra text
-- The translation must be accurate, natural, and complete
+- Return ONLY a valid JSON object with a single key "translation"
+- The value must be the complete, accurate translation in {target_language}
+- Do NOT include explanations, notes, or any extra text
+- Preserve the original tone, meaning, and style
+- If the text is already in {target_language}, return it as-is
 
 Text to translate:
 {text}
+
+Required JSON format:
+{{"translation": "<your translation here>"}}
 
 It is mandatory that you respond only using the JSON format above, nothing else.
 Your output must be perfectly parsable by a JSON parser without errors."""
 
             result = gl.nondet.exec_prompt(prompt, response_format="json")
-            return json.dumps(result, sort_keys=True)
+            return result
 
-        # All 5 validators run get_translation_result independently and must agree
-        consensus_json = gl.eq_principle.strict_eq(get_translation_result)
-        result_data = json.loads(consensus_json)
-        return result_data.get("translation", "").strip()
+        def validator_fn(leader_result) -> bool:
+            """
+            Each validator independently verifies the leader's translation
+            by asking the LLM to judge its accuracy and naturalness.
+            """
+            if not isinstance(leader_result, glvm.Return):
+                return False
+
+            try:
+                leader_translation = leader_result.calldata.get("translation", "").strip()
+                if not leader_translation:
+                    return False
+            except Exception:
+                return False
+
+            # Each validator runs their own independent quality check
+            validation_prompt = f"""You are an expert linguist and translator.
+
+Evaluate whether this translation is accurate and natural.
+
+Original text (source): {text}
+Target language: {target_language}
+Translation to evaluate: {leader_translation}
+
+Criteria:
+1. Is the meaning accurately preserved?
+2. Is the translation natural and fluent in {target_language}?
+3. Is it complete (nothing missing)?
+
+Return ONLY this JSON:
+{{"is_valid": true}} if the translation passes all criteria
+{{"is_valid": false}} if it fails any criterion
+
+It is mandatory that you respond only using the JSON format above, nothing else."""
+
+            validation_result = gl.nondet.exec_prompt(
+                validation_prompt, response_format="json"
+            )
+
+            try:
+                return bool(validation_result.get("is_valid", False))
+            except Exception:
+                return False
+
+        # Run: leader translates, validators independently judge
+        result = glvm.run_nondet_unsafe(leader_fn, validator_fn)
+
+        try:
+            return result.get("translation", "").strip()
+        except Exception:
+            return str(result).strip()
 
     @gl.public.write
     def translate(self, text: str, target_language: str) -> str:
@@ -61,38 +116,42 @@ Your output must be perfectly parsable by a JSON parser without errors."""
         if len(text) > 200:
             raise Exception("Text exceeds 200 character limit.")
 
-        translated_text = self._get_translation(text, target_language)
+        translated_text = self._do_translate(text, target_language)
 
         sender = gl.message.sender_address
-        record_id = f"{sender.as_hex}_{int(self.total_count)}"
+        sender_hex = sender.as_hex
+        count = int(self.total_count)
+        record_id = f"{sender_hex}_{count}"
 
         record = TranslationRecord(
             id=record_id,
-            user=sender.as_hex,
+            user=sender_hex,
             original_text=text,
             target_language=target_language,
             translated_text=translated_text,
         )
-
         self.translations[record_id] = record
 
-        if sender not in self.user_translation_ids:
-            self.user_translation_ids.get_or_insert_default(sender)[record_id] = True
-        else:
-            self.user_translation_ids[sender][record_id] = True
+        # Update user index (stored as JSON list of IDs)
+        existing = json.loads(self.user_index.get(sender_hex) or "[]")
+        existing.append(record_id)
+        self.user_index[sender_hex] = json.dumps(existing)
 
-        self.total_count += 1
+        self.total_count = u256(count + 1)
 
         return translated_text
 
     @gl.public.view
     def get_translation_history(self, user_address: str) -> list:
-        addr = Address(user_address)
-        if addr not in self.user_translation_ids:
-            return []
+        try:
+            addr = Address(user_address)
+            sender_hex = addr.as_hex
+        except Exception:
+            sender_hex = user_address.lower()
 
+        ids = json.loads(self.user_index.get(sender_hex) or "[]")
         history = []
-        for rid in self.user_translation_ids[addr]:
+        for rid in ids:
             if rid in self.translations:
                 rec = self.translations[rid]
                 history.append({
