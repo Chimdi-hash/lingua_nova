@@ -195,16 +195,89 @@ export default function Home() {
             value={targetLang}
             onChange={(e) => setTargetLang(e.target.value)}
           >
-            <option value="Spanish">Spanish</option>
-            <option value="French">French</option>
-            <option value="German">German</option>
-            <option value="Japanese">Japanese</option>
-            <option value="Mandarin">Mandarin (Chinese)</option>
-            <option value="Arabic">Arabic</option>
-            <option value="Russian">Russian</option>
-            <option value="Italian">Italian</option>
-            <option value="Portuguese">Portuguese</option>
-            <option value="Hindi">Hindi</option>
+            <optgroup label="🌍 African Languages">
+              <option value="Afrikaans">Afrikaans</option>
+              <option value="Amharic">Amharic</option>
+              <option value="Hausa">Hausa</option>
+              <option value="Igbo">Igbo</option>
+              <option value="Shona">Shona</option>
+              <option value="Somali">Somali</option>
+              <option value="Swahili">Swahili</option>
+              <option value="Xhosa">Xhosa</option>
+              <option value="Yoruba">Yoruba</option>
+              <option value="Zulu">Zulu</option>
+            </optgroup>
+            <optgroup label="🌏 Asian Languages">
+              <option value="Bengali">Bengali</option>
+              <option value="Burmese">Burmese (Myanmar)</option>
+              <option value="Cantonese">Cantonese</option>
+              <option value="Filipino">Filipino (Tagalog)</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Indonesian">Indonesian</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Javanese">Javanese</option>
+              <option value="Khmer">Khmer</option>
+              <option value="Korean">Korean</option>
+              <option value="Lao">Lao</option>
+              <option value="Malay">Malay</option>
+              <option value="Mandarin Chinese">Mandarin Chinese</option>
+              <option value="Marathi">Marathi</option>
+              <option value="Nepali">Nepali</option>
+              <option value="Punjabi">Punjabi</option>
+              <option value="Sinhala">Sinhala</option>
+              <option value="Tamil">Tamil</option>
+              <option value="Telugu">Telugu</option>
+              <option value="Thai">Thai</option>
+              <option value="Urdu">Urdu</option>
+              <option value="Vietnamese">Vietnamese</option>
+            </optgroup>
+            <optgroup label="🌐 Middle Eastern Languages">
+              <option value="Arabic">Arabic</option>
+              <option value="Azerbaijani">Azerbaijani</option>
+              <option value="Farsi">Farsi (Persian)</option>
+              <option value="Hebrew">Hebrew</option>
+              <option value="Kurdish">Kurdish</option>
+              <option value="Pashto">Pashto</option>
+              <option value="Turkish">Turkish</option>
+            </optgroup>
+            <optgroup label="🌎 European Languages">
+              <option value="Albanian">Albanian</option>
+              <option value="Bosnian">Bosnian</option>
+              <option value="Bulgarian">Bulgarian</option>
+              <option value="Croatian">Croatian</option>
+              <option value="Czech">Czech</option>
+              <option value="Danish">Danish</option>
+              <option value="Dutch">Dutch</option>
+              <option value="Estonian">Estonian</option>
+              <option value="Finnish">Finnish</option>
+              <option value="French">French</option>
+              <option value="German">German</option>
+              <option value="Greek">Greek</option>
+              <option value="Hungarian">Hungarian</option>
+              <option value="Icelandic">Icelandic</option>
+              <option value="Irish">Irish (Gaelic)</option>
+              <option value="Italian">Italian</option>
+              <option value="Latvian">Latvian</option>
+              <option value="Lithuanian">Lithuanian</option>
+              <option value="Macedonian">Macedonian</option>
+              <option value="Maltese">Maltese</option>
+              <option value="Norwegian">Norwegian</option>
+              <option value="Polish">Polish</option>
+              <option value="Portuguese">Portuguese</option>
+              <option value="Romanian">Romanian</option>
+              <option value="Russian">Russian</option>
+              <option value="Serbian">Serbian</option>
+              <option value="Slovak">Slovak</option>
+              <option value="Slovenian">Slovenian</option>
+              <option value="Spanish">Spanish</option>
+              <option value="Swedish">Swedish</option>
+              <option value="Ukrainian">Ukrainian</option>
+              <option value="Welsh">Welsh</option>
+            </optgroup>
+            <optgroup label="🌎 Americas Languages">
+              <option value="Haitian Creole">Haitian Creole</option>
+              <option value="Quechua">Quechua</option>
+            </optgroup>
           </select>
         </div>
 
