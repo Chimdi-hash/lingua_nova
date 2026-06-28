@@ -100,11 +100,16 @@ export default function Home() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "translate",
         args: [text, targetLang],
-        value: 0n,
+        value: BigInt(0),
       });
       
       // Wait for transaction receipt
-      const receipt = await currentClient.waitForTransactionReceipt({ hash });
+      const receipt = await currentClient.waitForTransactionReceipt({ 
+        hash,
+        status: "ACCEPTED" as any,
+        retries: 30,
+        interval: 3000,
+      });
       
       await fetchHistory(currentClient, account);
       
