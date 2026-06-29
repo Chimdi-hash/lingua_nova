@@ -50,7 +50,7 @@ export default function Home() {
   };
 
   const fetchHistory = async (genClient: any, userAccount: string) => {
-    if (!genClient || !CONTRACT_ADDRESS) return;
+    if (!genClient || !CONTRACT_ADDRESS) return [];
     try {
       const result = await genClient.readContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
@@ -58,8 +58,10 @@ export default function Home() {
         args: [userAccount],
       });
       setHistory(result as any[]);
+      return result as any[];
     } catch (err) {
       console.error("Failed to fetch history:", err);
+      return [];
     }
   };
 
@@ -140,22 +142,35 @@ export default function Home() {
       const receipt = await currentClient.waitForTransactionReceipt({ 
         hash,
         status: "ACCEPTED" as any,
-        retries: 30,
+        retries: 60,
         interval: 3000,
       });
       
-      await fetchHistory(currentClient, account);
+      // Poll for updated history to account for read node sync delays
+      const oldLength = history.length;
+      let newHistory = history;
+      let attempts = 0;
+      while (newHistory.length <= oldLength && attempts < 5) {
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        newHistory = await fetchHistory(currentClient, account);
+        attempts++;
+      }
       
       alert("Translation completed successfully!");
       setText(""); // Clear text to prevent duplicate identical transactions
     } catch (error: any) {
       console.error("Translation error:", error);
       const errMsg = error.message || String(error);
-      alert(
-        "Translation failed.\n\n" +
-        "If you are running back-to-back translations, the Studio network AI rate limit might be kicking in, or the 5 validators could not reach 100% identical consensus on the translation.\n\n" +
-        "Details: " + errMsg.substring(0, 150) + "..."
-      );
+      
+      if (errMsg.includes("Timed out") || errMsg.includes("Timeout")) {
+        alert("Your translation is still processing on the blockchain! The network is busy right now, but your translation will appear in your history shortly once the validators finish consensus.");
+      } else {
+        alert(
+          "Translation failed.\n\n" +
+          "If you are running back-to-back translations, the Studio network AI rate limit might be kicking in, or the validators could not reach identical consensus.\n\n" +
+          "Details: " + errMsg.substring(0, 150) + "..."
+        );
+      }
     } finally {
       setIsTranslating(false);
     }
