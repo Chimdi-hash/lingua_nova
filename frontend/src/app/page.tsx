@@ -139,12 +139,16 @@ export default function Home() {
       });
       
       // Wait for transaction receipt
-      const receipt = await currentClient.waitForTransactionReceipt({ 
-        hash,
-        status: "ACCEPTED" as any,
-        retries: 60,
-        interval: 3000,
-      });
+      try {
+        await currentClient.waitForTransactionReceipt({ 
+          hash,
+          status: "ACCEPTED" as any,
+          retries: 60,
+          interval: 3000,
+        });
+      } catch (receiptErr: any) {
+        console.warn("Receipt polling error (network timeout/fetch issue), checking history instead:", receiptErr);
+      }
       
       // Poll for updated history to account for read node sync delays
       const oldLength = history.length;
@@ -156,14 +160,18 @@ export default function Home() {
         attempts++;
       }
       
-      alert("Translation completed successfully!");
-      setText(""); // Clear text to prevent duplicate identical transactions
+      if (newHistory.length > oldLength) {
+        alert("Translation completed successfully!");
+        setText(""); // Clear text to prevent duplicate identical transactions
+      } else {
+        throw new Error("Transaction could not be confirmed. The network RPC may be down, or validators failed to reach consensus.");
+      }
     } catch (error: any) {
       console.error("Translation error:", error);
       const errMsg = error.message || String(error);
       
-      if (errMsg.includes("Timed out") || errMsg.includes("Timeout")) {
-        alert("Your translation is still processing on the blockchain! The network is busy right now, but your translation will appear in your history shortly once the validators finish consensus.");
+      if (errMsg.includes("could not be confirmed") || errMsg.includes("Timed out") || errMsg.includes("Timeout")) {
+        alert("Your translation is still processing on the blockchain! The network is busy or experiencing connection issues right now, but your translation will appear in your history shortly once consensus finishes.");
       } else {
         alert(
           "Translation failed.\n\n" +
