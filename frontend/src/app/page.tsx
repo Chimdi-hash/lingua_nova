@@ -75,6 +75,37 @@ export default function Home() {
     setHistory([]);
   };
 
+  const ensureNetwork = async () => {
+    const eth = (window as any).ethereum;
+    if (!eth) return;
+    try {
+      await eth.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0xf22f" }],
+      });
+    } catch (switchError: any) {
+      if (switchError.code === 4902) {
+        try {
+          await eth.request({
+            method: "wallet_addEthereumChain",
+            params: [
+              {
+                chainId: "0xf22f",
+                chainName: "GenLayer Studio",
+                nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
+                rpcUrls: ["https://studio.genlayer.com/api"],
+              },
+            ],
+          });
+        } catch (addError) {
+          console.error("Error adding network:", addError);
+        }
+      } else {
+        console.error("Error switching network:", switchError);
+      }
+    }
+  };
+
   const handleTranslate = async () => {
     if (!text) return;
     if (text.length > 200) {
@@ -85,6 +116,8 @@ export default function Home() {
       await initClient(true);
       if (!account) return;
     }
+
+    await ensureNetwork();
 
     setIsTranslating(true);
     setTranslation("");
