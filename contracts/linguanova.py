@@ -2,6 +2,7 @@
 
 import json
 from genlayer import *
+import genlayer.gl.vm as glvm
 
 
 class LinguaNova(gl.Contract):
@@ -12,7 +13,7 @@ class LinguaNova(gl.Contract):
         pass
 
     def _translate(self, text: str, target_language: str) -> str:
-        def get_translation() -> str:
+        def leader_fn() -> str:
             prompt = f"""You are an expert translator.
 
 Translate the text below into {target_language}.
@@ -25,7 +26,29 @@ Respond with ONLY this JSON (no other text):
             result = gl.nondet.exec_prompt(prompt, response_format="json")
             return json.dumps(result, sort_keys=True)
 
-        consensus_json = gl.eq_principle.strict_eq(get_translation)
+        def validator_fn(leader_result) -> bool:
+            if not isinstance(leader_result, glvm.Return):
+                return False
+            
+            try:
+                data = json.loads(leader_result.calldata)
+                translated_text = data.get("translation", "")
+            except Exception:
+                return False
+
+            prompt = f"""Is the following text a valid and accurate translation of the original text into {target_language}?
+Original Text: {text}
+Translation: {translated_text}
+Answer with ONLY a valid JSON object containing a boolean field "is_valid".
+Example: {{"is_valid": true}}"""
+            
+            try:
+                result = gl.nondet.exec_prompt(prompt, response_format="json")
+                return bool(result.get("is_valid", False))
+            except Exception:
+                return False
+
+        consensus_json = glvm.run_nondet_unsafe(leader_fn, validator_fn)
         data = json.loads(consensus_json)
         return data.get("translation", "").strip()
 
