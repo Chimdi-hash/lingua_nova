@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "genlayer-js";
 import { createAccount } from "viem/accounts";
-import { studionet } from "genlayer-js/chains";
+import { simulator } from "genlayer-js/chains";
 
 // Contract Address from Env or Fallback
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xE2c65fF91556D747cBD48a625D2BA44Ab145f143";
@@ -26,7 +26,6 @@ export default function Dashboard() {
     domain: "GENERAL", tone_requirements: "", glossary_terms: "",
     quality_requirements: "", reward_amount: "10"
   });
-
   const [submissionForm, setSubmissionForm] = useState({
     translated_text: "", translator_notes: "", glossary_choices: "", cultural_context_notes: ""
   });
@@ -55,28 +54,31 @@ export default function Dashboard() {
     }
     try {
       setLoading(true);
+      
+      const chainIdHex = `0x${simulator.id.toString(16)}`;
+      
       await (window as any).ethereum.request({
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: "0xf22f",
-            chainName: "GenLayer Studio",
-            nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-            rpcUrls: ["https://studio.genlayer.com/api"],
+            chainId: chainIdHex,
+            chainName: simulator.name,
+            nativeCurrency: simulator.nativeCurrency,
+            rpcUrls: [...simulator.rpcUrls.default.http],
           },
         ],
       });
-      await (window as any).ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
+      await (window as any).ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chainIdHex }] });
       
       const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
       const walletClient = createWalletClient({
         account: accounts[0],
-        chain: studionet,
+        chain: simulator,
         transport: custom((window as any).ethereum),
       }).extend(publicActions);
 
       const genClient = createClient({
-        chain: studionet,
+        chain: simulator,
         transport: custom((window as any).ethereum),
         account: accounts[0],
       });
