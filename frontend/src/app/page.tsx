@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "genlayer-js";
 import { createAccount } from "viem/accounts";
-import { simulator } from "genlayer-js/chains";
+import { studionet } from "genlayer-js/chains";
 
 // Contract Address from Env or Fallback
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x25B27F69f83927C07FA8f3567aE79B481AD5f2BB";
@@ -71,12 +71,12 @@ export default function Dashboard() {
       const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
       const walletClient = createWalletClient({
         account: accounts[0],
-        chain: simulator,
+        chain: studionet,
         transport: custom((window as any).ethereum),
       }).extend(publicActions);
 
       const genClient = createClient({
-        chain: simulator,
+        chain: studionet,
         transport: custom((window as any).ethereum),
         account: accounts[0],
       });
