@@ -236,7 +236,8 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
   "reasoning_summary": "string"
 }}
 """
-            return gl.nondet.exec_prompt(prompt, response_format="json")
+            result = gl.nondet.exec_prompt(prompt, response_format="json")
+            return json.dumps(result, sort_keys=True)
 
         consensus_raw = str(gl.eq_principle.prompt_comparative(do_review)).strip()
         
@@ -393,10 +394,24 @@ Return ONLY valid JSON matching this schema exactly:
   "reasoning_summary": "string"
 }}
 """
-            return gl.nondet.exec_prompt(prompt, response_format="json")
+            result = gl.nondet.exec_prompt(prompt, response_format="json")
+            return json.dumps(result, sort_keys=True)
 
-        consensus_raw = gl.eq_principle.prompt_comparative(do_review)
-        review_data = json.loads(str(consensus_raw))
+        consensus_raw = str(gl.eq_principle.prompt_comparative(do_review)).strip()
+        
+        # Robust JSON extraction
+        if consensus_raw.startswith("```"):
+            lines = consensus_raw.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            consensus_raw = "\n".join(lines).strip()
+            
+        try:
+            review_data = json.loads(consensus_raw)
+        except Exception as e:
+            review_data = {"verdict": "REJECTED"}
 
         self.reviews[submission_id] = json.dumps(review_data)
 
@@ -516,10 +531,24 @@ Return ONLY valid JSON matching this schema exactly:
   "final_recommendation": "string"
 }}
 """
-            return gl.nondet.exec_prompt(prompt, response_format="json")
+            result = gl.nondet.exec_prompt(prompt, response_format="json")
+            return json.dumps(result, sort_keys=True)
 
-        consensus_raw = gl.eq_principle.prompt_comparative(do_dispute_review)
-        dispute_review_data = json.loads(str(consensus_raw))
+        consensus_raw = str(gl.eq_principle.prompt_comparative(do_dispute_review)).strip()
+        
+        # Robust JSON extraction
+        if consensus_raw.startswith("```"):
+            lines = consensus_raw.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            consensus_raw = "\n".join(lines).strip()
+            
+        try:
+            dispute_review_data = json.loads(consensus_raw)
+        except Exception as e:
+            dispute_review_data = {"dispute_decision": "ESCALATE", "new_submission_decision": "REJECTED"}
 
         self.dispute_reviews[dispute_id] = json.dumps(dispute_review_data)
         
