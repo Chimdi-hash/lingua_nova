@@ -2,390 +2,398 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "genlayer-js";
-import { studionet } from "genlayer-js/chains";
-import dynamic from "next/dynamic";
+import { createAccount } from "viem/accounts";
+import { simulator } from "genlayer-js/chains";
 
-const GlobeCanvas = dynamic(() => import("./GlobeCanvas"), { ssr: false });
+// Contract Address from Env or Fallback
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x25B27F69f83927C07FA8f3567aE79B481AD5f2BB";
 
-// We assume the contract address will be provided in production, or hardcoded for the studio test
-const CONTRACT_ADDRESS = "0x16dCed6cd5285fBfD40EC737f651fa8f5ED1047b";
+// Minimal Viem configuration for Wallet Connection
+import { createWalletClient, custom, publicActions } from "viem";
 
-export default function Home() {
-  const [text, setText] = useState("");
-  const [targetLang, setTargetLang] = useState("Spanish");
-  const [translation, setTranslation] = useState("");
-  const [isTranslating, setIsTranslating] = useState(false);
+export default function Dashboard() {
   const [account, setAccount] = useState<string | null>(null);
-  const [history, setHistory] = useState<any[]>([]);
   const [client, setClient] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState("browse");
+  const [loading, setLoading] = useState(false);
+  const [bounties, setBounties] = useState<any[]>([]);
+  const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
+  const [selectedBounty, setSelectedBounty] = useState<any | null>(null);
+
+  // Form states
+  const [bountyForm, setBountyForm] = useState({
+    title: "", source_text: "", source_language: "", target_language: "",
+    domain: "GENERAL", tone_requirements: "", glossary_terms: "",
+    quality_requirements: "", reward_amount: "10"
+  });
+
+  const [submissionForm, setSubmissionForm] = useState({
+    translated_text: "", translator_notes: "", glossary_choices: "", cultural_context_notes: ""
+  });
 
   useEffect(() => {
-    // Attempt to connect to Genlayer on mount if wallet is available
-    if (typeof window !== "undefined" && (window as any).ethereum) {
-      initClient();
-    }
+    checkWalletConnection();
   }, []);
 
-  const initClient = async (forceConnect = false) => {
-    try {
-      const eth = (window as any).ethereum;
-      if (!eth) {
-        if (forceConnect) alert("MetaMask is required.");
-        return;
-      }
-      
-      const accounts = await eth.request({ method: forceConnect ? "eth_requestAccounts" : "eth_accounts" });
-      if (accounts.length > 0) {
-        setAccount(accounts[0]);
-        const genClient = createClient({
-          chain: studionet,
-          account: accounts[0] as `0x${string}`,
-        });
-        setClient(genClient);
-        // We could fetch history here
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchHistory = async (genClient: any, userAccount: string) => {
-    if (!genClient || !CONTRACT_ADDRESS) return [];
-    try {
-      const result = await genClient.readContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        functionName: "get_translation_history",
-        args: [userAccount],
-      });
-      setHistory(result as any[]);
-      return result as any[];
-    } catch (err) {
-      console.error("Failed to fetch history:", err);
-      return [];
-    }
-  };
-
-  useEffect(() => {
-    if (client && account) {
-      fetchHistory(client, account);
-    }
-  }, [client, account]);
-
-  const handleDisconnect = () => {
-    setAccount(null);
-    setClient(null);
-    setHistory([]);
-  };
-
-  const ensureNetwork = async () => {
-    const eth = (window as any).ethereum;
-    if (!eth) return;
-    try {
-      await eth.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0xf22f" }],
-      });
-    } catch (switchError: any) {
-      if (switchError.code === 4902) {
-        try {
-          await eth.request({
-            method: "wallet_addEthereumChain",
-            params: [
-              {
-                chainId: "0xf22f",
-                chainName: "GenLayer Studio",
-                nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
-                rpcUrls: ["https://studio.genlayer.com/api"],
-              },
-            ],
-          });
-        } catch (addError) {
-          console.error("Error adding network:", addError);
+  const checkWalletConnection = async () => {
+    if (typeof window !== "undefined" && (window as any).ethereum) {
+      try {
+        const accounts = await (window as any).ethereum.request({ method: "eth_accounts" });
+        if (accounts.length > 0) {
+          await connectWallet();
         }
-      } else {
-        console.error("Error switching network:", switchError);
+      } catch (err) {
+        console.error("Wallet check error:", err);
       }
     }
   };
 
-  const handleTranslate = async () => {
-    if (!text) return;
-    if (text.length > 200) {
-      alert("Text exceeds 200 characters.");
+  const connectWallet = async () => {
+    if (!(window as any).ethereum) {
+      alert("Please install MetaMask to use LinguaNova Protocol.");
       return;
     }
-    if (!account) {
-      await initClient(true);
-      if (!account) return;
-    }
-
-    await ensureNetwork();
-
-    setIsTranslating(true);
-    setTranslation("");
     try {
-      // Re-create client to ensure fresh nonce/state
-      const currentClient = createClient({
-        chain: studionet,
-        account: account as `0x${string}`,
+      setLoading(true);
+      await (window as any).ethereum.request({
+        method: "wallet_addEthereumChain",
+        params: [
+          {
+            chainId: "0xf22f",
+            chainName: "GenLayer Studio",
+            nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
+            rpcUrls: ["https://studio.genlayer.com/api"],
+          },
+        ],
+      });
+      await (window as any).ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
+      
+      const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
+      const walletClient = createWalletClient({
+        account: accounts[0],
+        chain: simulator,
+        transport: custom((window as any).ethereum),
+      }).extend(publicActions);
+
+      const genClient = createClient({
+        chain: simulator,
+        transport: custom((window as any).ethereum),
+        account: accounts[0],
       });
 
-      // Trigger the contract transaction
-      const hash = await currentClient.writeContract({
-        address: CONTRACT_ADDRESS as `0x${string}`,
-        functionName: "translate",
-        args: [text, targetLang],
-        value: BigInt(0),
-      });
+      setAccount(accounts[0]);
+      setClient(genClient);
       
-      // Wait for transaction receipt
-      try {
-        await currentClient.waitForTransactionReceipt({ 
-          hash,
-          status: "ACCEPTED" as any,
-          retries: 60,
-          interval: 3000,
-        });
-      } catch (receiptErr: any) {
-        console.warn("Receipt polling error (network timeout/fetch issue), checking history instead:", receiptErr);
-      }
-      
-      // Poll for updated history to account for read node sync delays
-      const oldLength = history.length;
-      let newHistory = history;
-      let attempts = 0;
-      while (newHistory.length <= oldLength && attempts < 5) {
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        newHistory = await fetchHistory(currentClient, account);
-        attempts++;
-      }
-      
-      if (newHistory.length > oldLength) {
-        alert("Translation completed successfully!");
-        setText(""); // Clear text to prevent duplicate identical transactions
-      } else {
-        throw new Error("Transaction could not be confirmed. The network RPC may be down, or validators failed to reach consensus.");
-      }
-    } catch (error: any) {
-      console.error("Translation error:", error);
-      const errMsg = error.message || String(error);
-      
-      if (errMsg.includes("could not be confirmed") || errMsg.includes("Timed out") || errMsg.includes("Timeout")) {
-        alert("Your translation is still processing on the blockchain! The network is busy or experiencing connection issues right now, but your translation will appear in your history shortly once consensus finishes.");
-      } else {
-        alert(
-          "Translation failed.\n\n" +
-          "If you are running back-to-back translations, the Studio network AI rate limit might be kicking in, or the validators could not reach identical consensus.\n\n" +
-          "Details: " + errMsg.substring(0, 150) + "..."
-        );
-      }
+      await fetchBounties(genClient);
+    } catch (err: any) {
+      console.error(err);
+      alert("Connection failed: " + err.message);
     } finally {
-      setIsTranslating(false);
+      setLoading(false);
     }
   };
 
-  return (
-    <>
-      <nav className="navbar">
-        <div className="logo-text">LinguaNova</div>
-        <div className="wallet-container">
-          {account ? (
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div className="connected-badge">
-                <span className="dot"></span>
-                {account.slice(0, 6)}...{account.slice(-4)}
-              </div>
-              <button className="nav-btn disconnect-button" onClick={handleDisconnect}>
-                Disconnect
-              </button>
-            </div>
-          ) : (
-            <button className="nav-btn" onClick={() => initClient(true)}>
-              Connect Wallet
-            </button>
-          )}
-        </div>
-      </nav>
+  const fetchBounties = async (genClient: any) => {
+    try {
+      const res = await genClient.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "get_all_bounties",
+        args: [],
+      });
+      setBounties(JSON.parse(res));
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-      <div className="container">
-        <div className="bg-shape shape-1"></div>
-        <div className="bg-shape shape-2"></div>
+  const fetchMySubmissions = async () => {
+    if (!client || !account) return;
+    try {
+      const res = await client.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "get_user_submissions",
+        args: [account],
+      });
+      setUserSubmissions(JSON.parse(res));
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-      <header className="header">
-        {/* Floating rotating canvas globe */}
-        <div className="globe-wrapper" aria-hidden="true">
-          <GlobeCanvas />
-        </div>
+  const handleCreateBounty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client) return;
+    try {
+      setLoading(true);
+      const hash = await client.writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "create_bounty",
+        args: [JSON.stringify(bountyForm)],
+        value: BigInt(0),
+      });
+      alert("Transaction submitted! Waiting for receipt...");
+      await waitForTx(hash);
+      alert("Bounty created successfully!");
+      setActiveTab("browse");
+      fetchBounties(client);
+    } catch (err: any) {
+      alert("Failed to create bounty: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        <div className="hero-badge">
-          <span className="hero-badge-dot"></span>
-          AI Consensus · 5 Validators · Studio Network
-        </div>
-        <h1 className="title">
-          <span className="title-line1 animate-title-1">Decentralized</span>
-          <span className="title-line2 animate-title-2">Language Intelligence</span>
-        </h1>
-        <p className="subtitle">
-          Real-time translation powered by <span className="subtitle-highlight">GenLayer's</span> multi-validator AI consensus
+  const handleSubmitTranslation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!client || !selectedBounty) return;
+    try {
+      setLoading(true);
+      const hash = await client.writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "submit_translation",
+        args: [selectedBounty.bounty_id, JSON.stringify(submissionForm)],
+        value: BigInt(0),
+      });
+      alert("Translation submitted! Waiting for receipt...");
+      await waitForTx(hash);
+      alert("Translation submitted successfully!");
+      fetchBounties(client);
+      setSelectedBounty(null);
+    } catch (err: any) {
+      alert("Failed to submit translation: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReviewTranslation = async (submissionId: string) => {
+    if (!client) return;
+    try {
+      setLoading(true);
+      const hash = await client.writeContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "review_translation",
+        args: [submissionId],
+        value: BigInt(0),
+      });
+      alert("Review process initiated on GenLayer. Validators are judging...");
+      await waitForTx(hash);
+      alert("Review complete! Check your submissions or bounty details for the verdict.");
+      fetchMySubmissions();
+      fetchBounties(client);
+    } catch (err: any) {
+      alert("Failed to review: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const waitForTx = async (hash: string) => {
+    try {
+      await client.waitForTransactionReceipt({ 
+        hash,
+        status: "ACCEPTED" as any,
+        retries: 60,
+        interval: 3000,
+      });
+    } catch (e) {
+      console.warn("Polling error, continuing assuming success due to network sync.", e);
+    }
+  };
+
+  if (!account) {
+    return (
+      <div className="container" style={{ textAlign: "center", paddingTop: "5rem" }}>
+        <h1>LinguaNova Protocol</h1>
+        <p style={{ color: "#94a3b8", marginBottom: "2rem", maxWidth: "600px", margin: "0 auto 2rem" }}>
+          The decentralized translation verification network. Translators submit work, and GenLayer AI validators independently judge quality, accuracy, and tone to reach on-chain consensus for payment and reputation.
         </p>
-        <div className="hero-stats">
-          <div className="stat-item">
-            <span className="stat-number">5</span>
-            <span className="stat-label">Validators</span>
-          </div>
-          <div className="stat-divider"></div>
-          <div className="stat-item">
-            <span className="stat-number">50+</span>
-            <span className="stat-label">Languages</span>
-          </div>
-          <div className="stat-divider"></div>
-          <div className="stat-item">
-            <span className="stat-number">100%</span>
-            <span className="stat-label">On-Chain</span>
-          </div>
-        </div>
-      </header>
-
-      <div className="glass-panel">
-        <div className="input-group">
-          <label className="label">Source Text (Max 200 chars)</label>
-          <textarea
-            className="textarea"
-            placeholder="Enter text to translate..."
-            value={text}
-            onChange={(e) => setText(e.target.value.slice(0, 200))}
-          ></textarea>
-          <div className="char-count">{text.length} / 200</div>
-        </div>
-
-        <div className="input-group">
-          <label className="label">Target Language</label>
-          <select 
-            className="select"
-            value={targetLang}
-            onChange={(e) => setTargetLang(e.target.value)}
-          >
-            <optgroup label="🌍 African Languages">
-              <option value="Afrikaans">Afrikaans</option>
-              <option value="Amharic">Amharic</option>
-              <option value="Hausa">Hausa</option>
-              <option value="Igbo">Igbo</option>
-              <option value="Shona">Shona</option>
-              <option value="Somali">Somali</option>
-              <option value="Swahili">Swahili</option>
-              <option value="Xhosa">Xhosa</option>
-              <option value="Yoruba">Yoruba</option>
-              <option value="Zulu">Zulu</option>
-            </optgroup>
-            <optgroup label="🌏 Asian Languages">
-              <option value="Bengali">Bengali</option>
-              <option value="Burmese">Burmese (Myanmar)</option>
-              <option value="Cantonese">Cantonese</option>
-              <option value="Filipino">Filipino (Tagalog)</option>
-              <option value="Hindi">Hindi</option>
-              <option value="Indonesian">Indonesian</option>
-              <option value="Japanese">Japanese</option>
-              <option value="Javanese">Javanese</option>
-              <option value="Khmer">Khmer</option>
-              <option value="Korean">Korean</option>
-              <option value="Lao">Lao</option>
-              <option value="Malay">Malay</option>
-              <option value="Mandarin Chinese">Mandarin Chinese</option>
-              <option value="Marathi">Marathi</option>
-              <option value="Nepali">Nepali</option>
-              <option value="Punjabi">Punjabi</option>
-              <option value="Sinhala">Sinhala</option>
-              <option value="Tamil">Tamil</option>
-              <option value="Telugu">Telugu</option>
-              <option value="Thai">Thai</option>
-              <option value="Urdu">Urdu</option>
-              <option value="Vietnamese">Vietnamese</option>
-            </optgroup>
-            <optgroup label="🌐 Middle Eastern Languages">
-              <option value="Arabic">Arabic</option>
-              <option value="Azerbaijani">Azerbaijani</option>
-              <option value="Farsi">Farsi (Persian)</option>
-              <option value="Hebrew">Hebrew</option>
-              <option value="Kurdish">Kurdish</option>
-              <option value="Pashto">Pashto</option>
-              <option value="Turkish">Turkish</option>
-            </optgroup>
-            <optgroup label="🌎 European Languages">
-              <option value="Albanian">Albanian</option>
-              <option value="Bosnian">Bosnian</option>
-              <option value="Bulgarian">Bulgarian</option>
-              <option value="Croatian">Croatian</option>
-              <option value="Czech">Czech</option>
-              <option value="Danish">Danish</option>
-              <option value="Dutch">Dutch</option>
-              <option value="Estonian">Estonian</option>
-              <option value="Finnish">Finnish</option>
-              <option value="French">French</option>
-              <option value="German">German</option>
-              <option value="Greek">Greek</option>
-              <option value="Hungarian">Hungarian</option>
-              <option value="Icelandic">Icelandic</option>
-              <option value="Irish">Irish (Gaelic)</option>
-              <option value="Italian">Italian</option>
-              <option value="Latvian">Latvian</option>
-              <option value="Lithuanian">Lithuanian</option>
-              <option value="Macedonian">Macedonian</option>
-              <option value="Maltese">Maltese</option>
-              <option value="Norwegian">Norwegian</option>
-              <option value="Polish">Polish</option>
-              <option value="Portuguese">Portuguese</option>
-              <option value="Romanian">Romanian</option>
-              <option value="Russian">Russian</option>
-              <option value="Serbian">Serbian</option>
-              <option value="Slovak">Slovak</option>
-              <option value="Slovenian">Slovenian</option>
-              <option value="Spanish">Spanish</option>
-              <option value="Swedish">Swedish</option>
-              <option value="Ukrainian">Ukrainian</option>
-              <option value="Welsh">Welsh</option>
-            </optgroup>
-            <optgroup label="🌎 Americas Languages">
-              <option value="Haitian Creole">Haitian Creole</option>
-              <option value="Quechua">Quechua</option>
-            </optgroup>
-          </select>
-        </div>
-
-        <button 
-          className="button" 
-          onClick={handleTranslate} 
-          disabled={isTranslating || !text || text.length > 200}
-        >
-          {isTranslating ? (
-            <><span className="loader"></span> Awaiting Validators Consensus...</>
-          ) : (
-            "Translate via GenLayer"
-          )}
+        <button className="btn-primary" onClick={connectWallet} disabled={loading} style={{ fontSize: "1.1rem", padding: "1rem 2rem" }}>
+          {loading ? "Connecting..." : "Connect MetaMask"}
         </button>
+      </div>
+    );
+  }
 
-        {(history.length > 0) && (
-          <div className="result-container">
-            <label className="label">Recent Translations</label>
-            <div className="result-box">
-              {history.map((record, idx) => (
-                <div key={idx} style={{ marginBottom: '1rem', paddingBottom: '1rem', borderBottom: '1px solid var(--glass-border)' }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.2rem' }}>
-                    {record.target_language} Translation:
+  return (
+    <div className="container">
+      <div className="header">
+        <div>
+          <h2>LinguaNova Protocol</h2>
+          <div style={{ fontSize: "0.875rem", color: "#94a3b8" }}>GenLayer Verification Network</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <span className="badge" style={{ background: "#334155" }}>{account.substring(0, 6)}...{account.substring(38)}</span>
+          <button className="btn-secondary" onClick={() => setAccount(null)}>Disconnect</button>
+        </div>
+      </div>
+
+      <div className="nav-tabs">
+        <div className={`nav-tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); fetchBounties(client); }}>Browse Bounties</div>
+        <div className={`nav-tab ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>Post a Bounty</div>
+        <div className={`nav-tab ${activeTab === 'my_submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('my_submissions'); fetchMySubmissions(); }}>My Submissions</div>
+      </div>
+
+      {loading && (
+        <div style={{ textAlign: "center", margin: "2rem 0" }}>
+          <div className="loading-spinner"></div>
+          <p style={{ marginTop: "1rem", color: "#94a3b8" }}>Interacting with GenLayer blockchain...</p>
+        </div>
+      )}
+
+      {!loading && activeTab === 'browse' && !selectedBounty && (
+        <div>
+          <h3>Open Translation Bounties</h3>
+          {bounties.length === 0 ? <p>No bounties available right now.</p> : (
+            <div className="grid">
+              {bounties.map(b => (
+                <div key={b.bounty_id} className="card">
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                    <h4>{b.title}</h4>
+                    <span className={`badge ${b.status === 'OPEN' ? 'badge-open' : 'badge-in-progress'}`}>{b.status}</span>
                   </div>
-                  <div className="result-text">{record.translated_text}</div>
+                  <div className="detail-row"><span className="detail-label">Route</span> <span>{b.source_language} ➔ {b.target_language}</span></div>
+                  <div className="detail-row"><span className="detail-label">Reward</span> <span className="text-success">{b.reward_amount} GEN</span></div>
+                  <div className="detail-row"><span className="detail-label">Domain</span> <span>{b.domain}</span></div>
+                  
+                  <button className="btn-secondary" style={{ width: "100%", marginTop: "1rem" }} onClick={() => setSelectedBounty(b)}>
+                    View & Submit
+                  </button>
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </div>
-
-        <div className="built-on">
-          <span className="built-on-dot"></span>
-          Built on <span className="built-on-highlight">GenLayer Studio</span>
+          )}
         </div>
+      )}
 
-      </div>
-    </>
+      {!loading && selectedBounty && (
+        <div className="card">
+          <button className="btn-secondary" style={{ marginBottom: "1rem" }} onClick={() => setSelectedBounty(null)}>← Back</button>
+          <h3>{selectedBounty.title}</h3>
+          <div className="grid">
+            <div>
+              <div className="detail-row"><span className="detail-label">Source Language</span> <span>{selectedBounty.source_language}</span></div>
+              <div className="detail-row"><span className="detail-label">Target Language</span> <span>{selectedBounty.target_language}</span></div>
+              <div className="detail-row"><span className="detail-label">Reward</span> <span className="text-success">{selectedBounty.reward_amount} GEN</span></div>
+              <div className="detail-row"><span className="detail-label">Status</span> <span>{selectedBounty.status}</span></div>
+            </div>
+            <div>
+              <div className="detail-row"><span className="detail-label">Domain</span> <span>{selectedBounty.domain}</span></div>
+              <div className="detail-row"><span className="detail-label">Tone</span> <span>{selectedBounty.tone_requirements || 'Standard'}</span></div>
+              <div className="detail-row"><span className="detail-label">Glossary</span> <span>{selectedBounty.glossary_terms || 'None'}</span></div>
+            </div>
+          </div>
+          
+          <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#0f172a", borderRadius: "6px" }}>
+            <h5 style={{ marginBottom: "0.5rem", color: "#94a3b8" }}>Source Text to Translate:</h5>
+            <p style={{ margin: 0 }}>{selectedBounty.source_text}</p>
+          </div>
+
+          {(selectedBounty.status === 'OPEN' || selectedBounty.status === 'IN_PROGRESS') && (
+            <form onSubmit={handleSubmitTranslation} style={{ marginTop: "2rem", borderTop: "1px solid #334155", paddingTop: "2rem" }}>
+              <h4>Submit Translation</h4>
+              <textarea 
+                rows={5} 
+                placeholder="Enter your translation here..." 
+                required
+                value={submissionForm.translated_text}
+                onChange={e => setSubmissionForm({...submissionForm, translated_text: e.target.value})}
+              />
+              <textarea 
+                rows={2} 
+                placeholder="Translator notes (explain your choices to the AI validators)..." 
+                value={submissionForm.translator_notes}
+                onChange={e => setSubmissionForm({...submissionForm, translator_notes: e.target.value})}
+              />
+              <button type="submit" className="btn-primary">Submit to Validators</button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {!loading && activeTab === 'post' && (
+        <div className="card" style={{ maxWidth: "800px", margin: "0 auto" }}>
+          <h3>Create Translation Bounty</h3>
+          <form onSubmit={handleCreateBounty}>
+            <div className="grid">
+              <div>
+                <label className="detail-label">Title</label>
+                <input required value={bountyForm.title} onChange={e => setBountyForm({...bountyForm, title: e.target.value})} placeholder="e.g., Translate Medical Abstract" />
+              </div>
+              <div>
+                <label className="detail-label">Reward Amount (GEN)</label>
+                <input type="number" required value={bountyForm.reward_amount} onChange={e => setBountyForm({...bountyForm, reward_amount: e.target.value})} />
+              </div>
+            </div>
+            
+            <div className="grid">
+              <div>
+                <label className="detail-label">Source Language</label>
+                <input required value={bountyForm.source_language} onChange={e => setBountyForm({...bountyForm, source_language: e.target.value})} />
+              </div>
+              <div>
+                <label className="detail-label">Target Language</label>
+                <input required value={bountyForm.target_language} onChange={e => setBountyForm({...bountyForm, target_language: e.target.value})} />
+              </div>
+            </div>
+
+            <label className="detail-label">Source Text</label>
+            <textarea rows={4} required value={bountyForm.source_text} onChange={e => setBountyForm({...bountyForm, source_text: e.target.value})}></textarea>
+            
+            <label className="detail-label">Tone & Quality Requirements (Guides the Validators)</label>
+            <input value={bountyForm.tone_requirements} onChange={e => setBountyForm({...bountyForm, tone_requirements: e.target.value})} placeholder="e.g., Formal, professional, no slang" />
+
+            <button type="submit" className="btn-primary" style={{ marginTop: "1rem" }}>Post Bounty to Network</button>
+          </form>
+        </div>
+      )}
+
+      {!loading && activeTab === 'my_submissions' && (
+        <div>
+          <h3>My Translation Submissions</h3>
+          {userSubmissions.length === 0 ? <p>You haven't submitted any translations yet.</p> : (
+            <div className="grid">
+              {userSubmissions.map(sub => (
+                <div key={sub.submission_id} className="card">
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                    <h4>Bounty: {sub.bounty_id}</h4>
+                    <span className={`badge ${
+                      sub.status === 'SUBMITTED' ? 'badge-in-progress' : 
+                      sub.status === 'APPROVED' ? 'badge-approved' : 
+                      sub.status === 'REJECTED' ? 'badge-rejected' : 'badge-review'
+                    }`}>{sub.status}</span>
+                  </div>
+                  
+                  <div style={{ background: "#0f172a", padding: "1rem", borderRadius: "6px", marginBottom: "1rem" }}>
+                    <h5 style={{ margin: "0 0 0.5rem 0", color: "#94a3b8", fontSize: "0.8rem" }}>YOUR TRANSLATION</h5>
+                    <p style={{ margin: 0, fontSize: "0.9rem" }}>{sub.translated_text}</p>
+                  </div>
+                  
+                  {sub.status === 'SUBMITTED' && (
+                    <button className="btn-primary" style={{ width: "100%" }} onClick={() => handleReviewTranslation(sub.submission_id)}>
+                      Trigger Validator Review
+                    </button>
+                  )}
+                  
+                  {sub.status !== 'SUBMITTED' && (
+                    <div style={{ borderTop: "1px solid #334155", paddingTop: "1rem", marginTop: "1rem" }}>
+                      <div className="detail-row">
+                        <span className="detail-label">Payment Status</span> 
+                        <span className={sub.payment_status === 'PAYABLE' ? 'text-success' : 'text-danger'}>
+                          {sub.payment_status}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: "0.85rem", color: "#94a3b8", marginTop: "0.5rem" }}>
+                        The GenLayer validators independently judged your translation and reached consensus on this verdict.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
