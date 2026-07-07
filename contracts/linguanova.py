@@ -238,8 +238,25 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
 """
             return gl.nondet.exec_prompt(prompt, response_format="json")
 
-        consensus_raw = gl.eq_principle.prompt_comparative(do_review)
-        review_data = json.loads(str(consensus_raw))
+        consensus_raw = str(gl.eq_principle.prompt_comparative(do_review)).strip()
+        
+        # Robust JSON extraction
+        if consensus_raw.startswith("```"):
+            lines = consensus_raw.split("\n")
+            if lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].startswith("```"):
+                lines = lines[:-1]
+            consensus_raw = "\n".join(lines).strip()
+            
+        try:
+            review_data = json.loads(consensus_raw)
+        except Exception as e:
+            # Fallback if json fails to parse
+            review_data = {
+                "verdict": "REJECTED",
+                "reasoning_summary": f"JSON parsing failed: {str(e)}\nRaw output: {consensus_raw}"
+            }
 
         self.reviews[submission_id] = json.dumps(review_data)
 
@@ -253,33 +270,42 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
 
         self.submissions[submission_id] = json.dumps(submission)
 
-        rep = json.loads(self.reputations[submission["translator"]])
-        if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
-            rep["approved_count"] += 1
-            if submission["payment_status"] == "PAYABLE":
-                payable = float(review_data.get("recommended_payment_amount", bounty.get("reward_amount", 0)))
-                rep["total_payable_amount"] += payable
-                protocol_stats = json.loads(self.stats["protocol"])
-                protocol_stats["total_payable_amount"] += payable
-                self.stats["protocol"] = json.dumps(protocol_stats)
-        elif verdict == "REJECTED":
-            rep["rejected_count"] += 1
-        elif verdict == "NEEDS_REVISION":
-            rep["revision_count"] += 1
+        try:
+            rep = json.loads(self.reputations[submission["translator"]])
+            if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
+                rep["approved_count"] += 1
+                if submission["payment_status"] == "PAYABLE":
+                    payable_val = review_data.get("recommended_payment_amount")
+                    if payable_val is None:
+                        payable_val = bounty.get("reward_amount", 0)
+                    payable = float(payable_val)
+                    rep["total_payable_amount"] += payable
+                    protocol_stats = json.loads(self.stats["protocol"])
+                    protocol_stats["total_payable_amount"] += payable
+                    self.stats["protocol"] = json.dumps(protocol_stats)
+            elif verdict == "REJECTED":
+                rep["rejected_count"] += 1
+            elif verdict == "NEEDS_REVISION":
+                rep["revision_count"] += 1
 
-        qs = float(review_data.get("quality_score", 0))
-        if rep["total_submissions"] > 0:
-            current_avg = rep["average_quality_score"]
-            n = rep["total_submissions"]
-            rep["average_quality_score"] = ((current_avg * (n - 1)) + qs) / n
-        else:
-            rep["average_quality_score"] = qs
+            qs = float(review_data.get("quality_score", 0))
+            if rep["total_submissions"] > 0:
+                current_avg = rep["average_quality_score"]
+                n = rep["total_submissions"]
+                rep["average_quality_score"] = ((current_avg * (n - 1)) + qs) / n
+            else:
+                rep["average_quality_score"] = qs
 
-        self.reputations[submission["translator"]] = json.dumps(rep)
+            self.reputations[submission["translator"]] = json.dumps(rep)
 
-        protocol_stats = json.loads(self.stats["protocol"])
-        protocol_stats["total_reviews"] += 1
-        self.stats["protocol"] = json.dumps(protocol_stats)
+            protocol_stats = json.loads(self.stats["protocol"])
+            protocol_stats["total_reviews"] += 1
+            self.stats["protocol"] = json.dumps(protocol_stats)
+        except Exception as e:
+            # If reputation update fails, we log it into the submission for visibility
+            submission["status"] = "ERROR_IN_REP_UPDATE"
+            submission["translator_notes"] = str(e)
+            self.submissions[submission_id] = json.dumps(submission)
 
         return verdict
 
