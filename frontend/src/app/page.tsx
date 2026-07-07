@@ -203,14 +203,14 @@ export default function Dashboard() {
 
   if (!account) {
     return (
-      <div className="container" style={{ textAlign: "center", paddingTop: "8rem" }}>
-        <h1 style={{ fontSize: "3rem", textShadow: "0 0 20px var(--primary-glow)", marginBottom: "1rem" }}>LinguaNova Protocol</h1>
-        <p style={{ color: "#94a3b8", marginBottom: "3rem", maxWidth: "700px", margin: "0 auto 3rem", fontSize: "1.2rem", letterSpacing: "1px" }}>
+      <div className="container hero-container">
+        <h1 className="hero-title">LinguaNova Protocol</h1>
+        <p className="hero-subtitle">
           THE DECENTRALIZED TRANSLATION VERIFICATION NETWORK. 
           <br /><br />
           Translators submit work. GenLayer AI validators independently judge quality, accuracy, and tone to reach on-chain consensus for payment and reputation.
         </p>
-        <button className="btn-primary" onClick={connectWallet} disabled={loading} style={{ fontSize: "1.2rem", padding: "1.2rem 2.5rem" }}>
+        <button className="btn-primary hero-btn" onClick={connectWallet} disabled={loading}>
           {loading ? "INITIALIZING NEURAL LINK..." : "CONNECT METAMASK"}
         </button>
       </div>
@@ -220,15 +220,15 @@ export default function Dashboard() {
   return (
     <div className="container">
       <div className="header">
-        <div>
-          <h2 style={{ margin: 0, fontSize: "2rem" }}>LinguaNova Protocol</h2>
-          <div style={{ fontSize: "1rem", color: "var(--primary)", letterSpacing: "2px", marginTop: "0.25rem" }}>GENLAYER VERIFICATION NETWORK</div>
+        <div className="header-title-container">
+          <h2 className="header-title">LinguaNova Protocol</h2>
+          <div className="header-subtitle">GENLAYER VERIFICATION NETWORK</div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "1.5rem" }}>
-          <span className="badge" style={{ background: "rgba(0, 243, 255, 0.1)", color: "var(--primary)", border: "1px solid var(--primary)", fontSize: "1rem" }}>
+        <div className="header-badge-container">
+          <span className="badge badge-account">
             {account.substring(0, 6)}...{account.substring(38)}
           </span>
-          <button className="btn-secondary" onClick={() => setAccount(null)}>DISCONNECT</button>
+          <button className="btn-secondary btn-disconnect" onClick={() => setAccount(null)}>DISCONNECT</button>
         </div>
       </div>
 
