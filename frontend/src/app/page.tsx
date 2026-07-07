@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { createClient } from "genlayer-js";
 import { createAccount } from "viem/accounts";
-import { simulator } from "genlayer-js/chains";
+import { studionet } from "genlayer-js/chains";
 
 // Contract Address from Env or Fallback
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xE2c65fF91556D747cBD48a625D2BA44Ab145f143";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x52c02c03C753EE46987103a26e1D67A707b137E6";
 
 // Minimal Viem configuration for Wallet Connection
 import { createWalletClient, custom, publicActions } from "viem";
@@ -55,30 +55,28 @@ export default function Dashboard() {
     try {
       setLoading(true);
       
-      const chainIdHex = `0x${simulator.id.toString(16)}`;
-      
       await (window as any).ethereum.request({
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: chainIdHex,
-            chainName: simulator.name,
-            nativeCurrency: simulator.nativeCurrency,
-            rpcUrls: [...simulator.rpcUrls.default.http],
+            chainId: "0xf22f",
+            chainName: "GenLayer Studio",
+            nativeCurrency: { name: "GEN", symbol: "GEN", decimals: 18 },
+            rpcUrls: ["https://studio.genlayer.com/api"],
           },
         ],
       });
-      await (window as any).ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chainIdHex }] });
+      await (window as any).ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
       
       const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
       const walletClient = createWalletClient({
         account: accounts[0],
-        chain: simulator,
+        chain: studionet,
         transport: custom((window as any).ethereum),
       }).extend(publicActions);
 
       const genClient = createClient({
-        chain: simulator,
+        chain: studionet,
         transport: custom((window as any).ethereum),
         account: accounts[0],
       });
