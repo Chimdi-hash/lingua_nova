@@ -194,7 +194,7 @@ class LinguaNova(gl.Contract):
 
         bounty = json.loads(self.bounties[submission["bounty_id"]])
 
-        def do_review() -> str:
+        def leader_fn() -> dict:
             prompt = f"""You are an expert, impartial linguistic auditor and quality assurance system.
 You are tasked with independently reviewing a human-submitted translation against the source requirements.
 
@@ -236,34 +236,25 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
   "reasoning_summary": "string"
 }}
 """
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            if isinstance(result, str):
-                return result
-            return json.dumps(result, sort_keys=True)
+            res = gl.nondet.exec_prompt(prompt, response_format="json")
+            if isinstance(res, str):
+                try:
+                    res = json.loads(res)
+                except Exception:
+                    pass
+            return res if isinstance(res, dict) else {"verdict": "REJECTED"}
 
-        consensus_raw = str(gl.eq_principle.prompt_comparative(do_review)).strip()
-        
-        # Robust JSON extraction
-        if consensus_raw.startswith("```"):
-            lines = consensus_raw.split("\n")
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].startswith("```"):
-                lines = lines[:-1]
-            consensus_raw = "\n".join(lines).strip()
-            
-        try:
-            review_data = json.loads(consensus_raw)
-            if isinstance(review_data, str):
-                review_data = json.loads(review_data)
-            if not isinstance(review_data, dict):
-                raise ValueError("Parsed JSON is not a dictionary")
-        except Exception as e:
-            # Fallback if json fails to parse
-            review_data = {
-                "verdict": "REJECTED",
-                "reasoning_summary": f"JSON parsing failed: {str(e)}\nRaw output: {consensus_raw}"
-            }
+        def validator_fn(leader_result) -> bool:
+            if not isinstance(leader_result, glvm.Return):
+                return False
+            my_res = leader_fn()
+            # Consensus is reached if they agree on the final verdict and payment action
+            return (
+                leader_result.calldata.get("verdict") == my_res.get("verdict")
+                and leader_result.calldata.get("release_payment") == my_res.get("release_payment")
+            )
+
+        review_data = glvm.run_nondet_unsafe(leader_fn, validator_fn)
 
         self.reviews[submission_id] = json.dumps(review_data)
 
@@ -362,7 +353,7 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
         old_review = json.loads(self.reviews.get(submission_id, "{}"))
         latest_revision = submission["revisions"][-1]
 
-        def do_review() -> str:
+        def leader_fn() -> dict:
             prompt = f"""You are an expert linguistic auditor reviewing a REVISED human translation.
 
 Bounty Requirements:
@@ -400,30 +391,24 @@ Return ONLY valid JSON matching this schema exactly:
   "reasoning_summary": "string"
 }}
 """
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            if isinstance(result, str):
-                return result
-            return json.dumps(result, sort_keys=True)
+            res = gl.nondet.exec_prompt(prompt, response_format="json")
+            if isinstance(res, str):
+                try:
+                    res = json.loads(res)
+                except Exception:
+                    pass
+            return res if isinstance(res, dict) else {"verdict": "REJECTED"}
 
-        consensus_raw = str(gl.eq_principle.prompt_comparative(do_review)).strip()
-        
-        # Robust JSON extraction
-        if consensus_raw.startswith("```"):
-            lines = consensus_raw.split("\n")
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].startswith("```"):
-                lines = lines[:-1]
-            consensus_raw = "\n".join(lines).strip()
-            
-        try:
-            review_data = json.loads(consensus_raw)
-            if isinstance(review_data, str):
-                review_data = json.loads(review_data)
-            if not isinstance(review_data, dict):
-                raise ValueError("Parsed JSON is not a dictionary")
-        except Exception as e:
-            review_data = {"verdict": "REJECTED"}
+        def validator_fn(leader_result) -> bool:
+            if not isinstance(leader_result, glvm.Return):
+                return False
+            my_res = leader_fn()
+            return (
+                leader_result.calldata.get("verdict") == my_res.get("verdict")
+                and leader_result.calldata.get("release_payment") == my_res.get("release_payment")
+            )
+
+        review_data = glvm.run_nondet_unsafe(leader_fn, validator_fn)
 
         self.reviews[submission_id] = json.dumps(review_data)
 
@@ -507,23 +492,19 @@ Return ONLY valid JSON matching this schema exactly:
         bounty = json.loads(self.bounties[submission["bounty_id"]])
         review = json.loads(self.reviews.get(submission_id, "{}"))
 
-        def do_dispute_review() -> str:
-            prompt = f"""You are the ultimate appellate validator for a decentralized translation verification protocol.
-A dispute has been raised regarding a translation review.
+        def leader_fn() -> dict:
+            prompt = f"""You are the Supreme Dispute Resolution Node for LinguaNova Protocol.
+A client has disputed an AI review that approved a translation.
 
-Bounty:
+Bounty Requirements:
 - Source Text: {bounty.get('source_text')}
 - Target Language: {bounty.get('target_language')}
+- Domain: {bounty.get('domain')}
 
-Translation:
+Translator Submission:
 - Translated Text: {submission.get('translated_text')}
 
-Original Review Verdict: {review.get('verdict')}
-Original Quality Score: {review.get('quality_score')}
-Reviewer Reasoning: {review.get('reasoning_summary')}
-
-Dispute Details:
-- Reason: {dispute.get('dispute_reason')}
+Dispute Details (Client claims the translation is incorrect):
 - Explanation: {dispute.get('explanation')}
 - Requested Outcome: {dispute.get('requested_outcome')}
 
@@ -543,30 +524,24 @@ Return ONLY valid JSON matching this schema exactly:
   "final_recommendation": "string"
 }}
 """
-            result = gl.nondet.exec_prompt(prompt, response_format="json")
-            if isinstance(result, str):
-                return result
-            return json.dumps(result, sort_keys=True)
+            res = gl.nondet.exec_prompt(prompt, response_format="json")
+            if isinstance(res, str):
+                try:
+                    res = json.loads(res)
+                except Exception:
+                    pass
+            return res if isinstance(res, dict) else {"dispute_decision": "ESCALATE"}
 
-        consensus_raw = str(gl.eq_principle.prompt_comparative(do_dispute_review)).strip()
-        
-        # Robust JSON extraction
-        if consensus_raw.startswith("```"):
-            lines = consensus_raw.split("\n")
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].startswith("```"):
-                lines = lines[:-1]
-            consensus_raw = "\n".join(lines).strip()
-            
-        try:
-            dispute_review_data = json.loads(consensus_raw)
-            if isinstance(dispute_review_data, str):
-                dispute_review_data = json.loads(dispute_review_data)
-            if not isinstance(dispute_review_data, dict):
-                raise ValueError("Parsed JSON is not a dictionary")
-        except Exception as e:
-            dispute_review_data = {"dispute_decision": "ESCALATE", "new_submission_decision": "REJECTED"}
+        def validator_fn(leader_result) -> bool:
+            if not isinstance(leader_result, glvm.Return):
+                return False
+            my_res = leader_fn()
+            return (
+                leader_result.calldata.get("dispute_decision") == my_res.get("dispute_decision")
+                and leader_result.calldata.get("new_submission_decision") == my_res.get("new_submission_decision")
+            )
+
+        dispute_review_data = glvm.run_nondet_unsafe(leader_fn, validator_fn)
 
         self.dispute_reviews[dispute_id] = json.dumps(dispute_review_data)
         
