@@ -237,6 +237,8 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
 }}
 """
             result = gl.nondet.exec_prompt(prompt, response_format="json")
+            if isinstance(result, str):
+                return result
             return json.dumps(result, sort_keys=True)
 
         consensus_raw = str(gl.eq_principle.prompt_comparative(do_review)).strip()
@@ -252,6 +254,10 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
             
         try:
             review_data = json.loads(consensus_raw)
+            if isinstance(review_data, str):
+                review_data = json.loads(review_data)
+            if not isinstance(review_data, dict):
+                raise ValueError("Parsed JSON is not a dictionary")
         except Exception as e:
             # Fallback if json fails to parse
             review_data = {
@@ -395,6 +401,8 @@ Return ONLY valid JSON matching this schema exactly:
 }}
 """
             result = gl.nondet.exec_prompt(prompt, response_format="json")
+            if isinstance(result, str):
+                return result
             return json.dumps(result, sort_keys=True)
 
         consensus_raw = str(gl.eq_principle.prompt_comparative(do_review)).strip()
@@ -410,6 +418,10 @@ Return ONLY valid JSON matching this schema exactly:
             
         try:
             review_data = json.loads(consensus_raw)
+            if isinstance(review_data, str):
+                review_data = json.loads(review_data)
+            if not isinstance(review_data, dict):
+                raise ValueError("Parsed JSON is not a dictionary")
         except Exception as e:
             review_data = {"verdict": "REJECTED"}
 
@@ -532,6 +544,8 @@ Return ONLY valid JSON matching this schema exactly:
 }}
 """
             result = gl.nondet.exec_prompt(prompt, response_format="json")
+            if isinstance(result, str):
+                return result
             return json.dumps(result, sort_keys=True)
 
         consensus_raw = str(gl.eq_principle.prompt_comparative(do_dispute_review)).strip()
@@ -547,6 +561,10 @@ Return ONLY valid JSON matching this schema exactly:
             
         try:
             dispute_review_data = json.loads(consensus_raw)
+            if isinstance(dispute_review_data, str):
+                dispute_review_data = json.loads(dispute_review_data)
+            if not isinstance(dispute_review_data, dict):
+                raise ValueError("Parsed JSON is not a dictionary")
         except Exception as e:
             dispute_review_data = {"dispute_decision": "ESCALATE", "new_submission_decision": "REJECTED"}
 
