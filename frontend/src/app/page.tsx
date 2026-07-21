@@ -9,12 +9,13 @@ import { studionet } from "genlayer-js/chains";
 const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x308C2Bb7BD28aE17286eE6AEFD423d503F16A258";
 
 // Minimal Viem configuration for Wallet Connection
-import { createWalletClient, custom, publicActions } from "viem";
+import { createWalletClient, custom, publicActions, parseEther, formatEther } from "viem";
 
 export default function Dashboard() {
   const [account, setAccount] = useState<string | null>(null);
   const [client, setClient] = useState<any>(null);
   const [activeTab, setActiveTab] = useState("browse");
+  const [balance, setBalance] = useState<string>("0.00");
   const [loading, setLoading] = useState(false);
   const [bounties, setBounties] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
@@ -68,23 +69,19 @@ export default function Dashboard() {
       });
       await (window as any).ethereum.request({ method: "wallet_switchEthereumChain", params: [{ chainId: "0xf22f" }] });
       
-      const accounts = await (window as any).ethereum.request({ method: "eth_requestAccounts" });
       const walletClient = createWalletClient({
-        account: accounts[0],
         chain: studionet,
         transport: custom((window as any).ethereum),
       }).extend(publicActions);
 
-      const genClient = createClient({
-        chain: studionet,
-        transport: custom((window as any).ethereum),
-        account: accounts[0],
-      });
-
+      const accounts = await walletClient.requestAddresses();
       setAccount(accounts[0]);
-      setClient(genClient);
+      setClient(walletClient);
       
-      await fetchBounties(genClient);
+      const bal = await walletClient.getBalance({ address: accounts[0] });
+      setBalance(Number(formatEther(bal)).toFixed(2));
+      
+      await fetchBounties(walletClient);
     } catch (err: any) {
       console.error(err);
       alert("Connection failed: " + err.message);
@@ -129,7 +126,7 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "create_bounty",
         args: [JSON.stringify(bountyForm)],
-        value: BigInt(0),
+        value: parseEther(bountyForm.reward_amount.toString()),
       });
       alert("Transaction submitted! Waiting for receipt...");
       await waitForTx(hash);
@@ -226,7 +223,7 @@ export default function Dashboard() {
         </div>
         <div className="header-badge-container">
           <span className="badge badge-account">
-            {account.substring(0, 6)}...{account.substring(38)}
+            {balance} GEN | {account.substring(0, 6)}...{account.substring(38)}
           </span>
           <button className="btn-secondary btn-disconnect" onClick={() => setAccount(null)}>DISCONNECT</button>
         </div>

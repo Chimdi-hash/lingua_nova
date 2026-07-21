@@ -51,6 +51,10 @@ class LinguaNova(gl.Contract):
             raise Exception("target_language cannot be empty")
         if reward_amount < 0:
             raise Exception("reward_amount cannot be negative")
+        
+        required_wei = int(reward_amount * 10**18)
+        if gl.message.value < required_wei:
+            raise Exception("Insufficient GEN attached to fund bounty")
 
         counter = int(self.stats.get("bounty_counter", "0")) + 1
         bounty_id = f"B-{counter}"
@@ -281,6 +285,10 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
                     protocol_stats = json.loads(self.stats["protocol"])
                     protocol_stats["total_payable_amount"] += payable
                     self.stats["protocol"] = json.dumps(protocol_stats)
+                    try:
+                        gl.emit_transfer(submission["translator"], int(payable * 10**18))
+                    except Exception as e:
+                        pass
             elif verdict == "REJECTED":
                 rep["rejected_count"] += 1
             elif verdict == "NEEDS_REVISION":
@@ -431,6 +439,10 @@ Return ONLY valid JSON matching this schema exactly:
                 protocol_stats = json.loads(self.stats["protocol"])
                 protocol_stats["total_payable_amount"] += payable
                 self.stats["protocol"] = json.dumps(protocol_stats)
+                try:
+                    gl.emit_transfer(submission["translator"], int(payable * 10**18))
+                except Exception as e:
+                    pass
         elif verdict == "REJECTED":
             rep["rejected_count"] += 1
 
@@ -551,6 +563,13 @@ Return ONLY valid JSON matching this schema exactly:
         submission["status"] = dispute_review_data.get("new_submission_decision", submission["status"])
         if dispute_review_data.get("release_payment"):
             submission["payment_status"] = "PAYABLE"
+            try:
+                bounty_str = self.bounties.get(submission["bounty_id"])
+                bounty = json.loads(bounty_str)
+                payable = float(dispute_review_data.get("recommended_payment_amount", bounty.get("reward_amount", 0)))
+                gl.emit_transfer(submission["translator"], int(payable * 10**18))
+            except Exception as e:
+                pass
         else:
             submission["payment_status"] = "WITHHELD"
             
