@@ -76,12 +76,18 @@ export default function Dashboard() {
 
       const accounts = await walletClient.requestAddresses();
       setAccount(accounts[0]);
-      setClient(walletClient);
+      
+      const gClient = createClient({
+        chain: studionet,
+        transport: custom((window as any).ethereum),
+        account: accounts[0] as `0x${string}`,
+      });
+      setClient(gClient);
       
       const bal = await walletClient.getBalance({ address: accounts[0] });
       setBalance(Number(formatEther(bal)).toFixed(2));
       
-      await fetchBounties(walletClient);
+      await fetchBounties(gClient);
     } catch (err: any) {
       console.error(err);
       alert("Connection failed: " + err.message);
@@ -126,7 +132,6 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "create_bounty",
         args: [JSON.stringify(bountyForm)],
-        account: account as `0x${string}`,
         value: parseEther(bountyForm.reward_amount.toString()),
       });
       alert("Transaction submitted! Waiting for receipt...");
@@ -150,7 +155,6 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "submit_translation",
         args: [selectedBounty.bounty_id, JSON.stringify(submissionForm)],
-        account: account as `0x${string}`,
         value: BigInt(0),
       });
       alert("Translation submitted! Waiting for receipt...");
@@ -173,7 +177,6 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "review_translation",
         args: [submissionId],
-        account: account as `0x${string}`,
         value: BigInt(0),
       });
       alert("Review process initiated on GenLayer. Validators are judging...");
