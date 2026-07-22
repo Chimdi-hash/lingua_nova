@@ -38,7 +38,7 @@ class LinguaNova(gl.Contract):
 
     # --- 1. BOUNTIES ---
 
-    @gl.public.write
+    @gl.public.write.payable
     def create_bounty(self, bounty_json: str) -> str:
         data = json.loads(bounty_json)
         source_text = data.get("source_text", "").strip()
