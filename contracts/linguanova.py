@@ -286,7 +286,8 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
                     protocol_stats["total_payable_amount"] += payable
                     self.stats["protocol"] = json.dumps(protocol_stats)
                     try:
-                        gl.emit_transfer(submission["translator"], int(payable * 10**18))
+                        recipient = gl.contract.get_at(Address(submission["translator"]))
+                        recipient.emit_transfer(value=int(payable * 10**18))
                     except Exception as e:
                         pass
             elif verdict == "REJECTED":
@@ -440,7 +441,8 @@ Return ONLY valid JSON matching this schema exactly:
                 protocol_stats["total_payable_amount"] += payable
                 self.stats["protocol"] = json.dumps(protocol_stats)
                 try:
-                    gl.emit_transfer(submission["translator"], int(payable * 10**18))
+                    recipient = gl.contract.get_at(Address(submission["translator"]))
+                    recipient.emit_transfer(value=int(payable * 10**18))
                 except Exception as e:
                     pass
         elif verdict == "REJECTED":
@@ -567,7 +569,8 @@ Return ONLY valid JSON matching this schema exactly:
                 bounty_str = self.bounties.get(submission["bounty_id"])
                 bounty = json.loads(bounty_str)
                 payable = float(dispute_review_data.get("recommended_payment_amount", bounty.get("reward_amount", 0)))
-                gl.emit_transfer(submission["translator"], int(payable * 10**18))
+                recipient = gl.contract.get_at(Address(submission["translator"]))
+                recipient.emit_transfer(value=int(payable * 10**18))
             except Exception as e:
                 pass
         else:
