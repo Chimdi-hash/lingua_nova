@@ -109,6 +109,20 @@ export default function Dashboard() {
     }
   };
 
+  const fetchBalance = async () => {
+    if (!account) return;
+    try {
+      const walletClient = createWalletClient({
+        chain: studionet,
+        transport: custom((window as any).ethereum),
+      }).extend(publicActions);
+      const bal = await walletClient.getBalance({ address: account as `0x${string}` });
+      setBalance(Number(formatEther(bal)).toFixed(2));
+    } catch (err) {
+      console.error("Failed to fetch balance", err);
+    }
+  };
+
   const fetchMySubmissions = async () => {
     if (!client || !account) return;
     try {
@@ -139,6 +153,7 @@ export default function Dashboard() {
       alert("Bounty created successfully!");
       setActiveTab("browse");
       fetchBounties(client);
+      fetchBalance();
     } catch (err: any) {
       alert("Failed to create bounty: " + err.message);
     } finally {
@@ -161,6 +176,7 @@ export default function Dashboard() {
       await waitForTx(hash);
       alert("Translation submitted successfully!");
       fetchBounties(client);
+      fetchBalance();
       setSelectedBounty(null);
     } catch (err: any) {
       alert("Failed to submit translation: " + err.message);
@@ -184,6 +200,7 @@ export default function Dashboard() {
       alert("Review complete! Check your submissions or bounty details for the verdict.");
       fetchMySubmissions();
       fetchBounties(client);
+      fetchBalance();
     } catch (err: any) {
       alert("Failed to review: " + err.message);
     } finally {
@@ -236,9 +253,9 @@ export default function Dashboard() {
       </div>
 
       <div className="nav-tabs">
-        <div className={`nav-tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); fetchBounties(client); }}>Browse Bounties</div>
-        <div className={`nav-tab ${activeTab === 'post' ? 'active' : ''}`} onClick={() => setActiveTab('post')}>Post a Bounty</div>
-        <div className={`nav-tab ${activeTab === 'my_submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('my_submissions'); fetchMySubmissions(); }}>My Submissions</div>
+        <div className={`nav-tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); fetchBounties(client); fetchBalance(); }}>Browse Bounties</div>
+        <div className={`nav-tab ${activeTab === 'post' ? 'active' : ''}`} onClick={() => { setActiveTab('post'); fetchBalance(); }}>Post a Bounty</div>
+        <div className={`nav-tab ${activeTab === 'my_submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('my_submissions'); fetchMySubmissions(); fetchBalance(); }}>My Submissions</div>
       </div>
 
       {loading && (
