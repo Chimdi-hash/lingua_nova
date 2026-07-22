@@ -126,6 +126,7 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "create_bounty",
         args: [JSON.stringify(bountyForm)],
+        account: account as `0x${string}`,
         value: parseEther(bountyForm.reward_amount.toString()),
       });
       alert("Transaction submitted! Waiting for receipt...");
@@ -149,6 +150,7 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "submit_translation",
         args: [selectedBounty.bounty_id, JSON.stringify(submissionForm)],
+        account: account as `0x${string}`,
         value: BigInt(0),
       });
       alert("Translation submitted! Waiting for receipt...");
@@ -171,6 +173,7 @@ export default function Dashboard() {
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "review_translation",
         args: [submissionId],
+        account: account as `0x${string}`,
         value: BigInt(0),
       });
       alert("Review process initiated on GenLayer. Validators are judging...");
