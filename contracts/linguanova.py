@@ -287,9 +287,10 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
                     self.stats["protocol"] = json.dumps(protocol_stats)
                     try:
                         recipient = gl.contract.get_at(Address(submission["translator"]))
-                        recipient.emit_transfer(value=int(payable * 10**18))
+                        recipient.emit_transfer(value=u256(int(payable * 10**18)))
                     except Exception as e:
-                        pass
+                        protocol_stats["last_payout_error"] = str(e)
+                        self.stats["protocol"] = json.dumps(protocol_stats)
             elif verdict == "REJECTED":
                 rep["rejected_count"] += 1
             elif verdict == "NEEDS_REVISION":
@@ -442,9 +443,10 @@ Return ONLY valid JSON matching this schema exactly:
                 self.stats["protocol"] = json.dumps(protocol_stats)
                 try:
                     recipient = gl.contract.get_at(Address(submission["translator"]))
-                    recipient.emit_transfer(value=int(payable * 10**18))
+                    recipient.emit_transfer(value=u256(int(payable * 10**18)))
                 except Exception as e:
-                    pass
+                    protocol_stats["last_payout_error"] = str(e)
+                    self.stats["protocol"] = json.dumps(protocol_stats)
         elif verdict == "REJECTED":
             rep["rejected_count"] += 1
 
@@ -565,14 +567,16 @@ Return ONLY valid JSON matching this schema exactly:
         submission["status"] = dispute_review_data.get("new_submission_decision", submission["status"])
         if dispute_review_data.get("release_payment"):
             submission["payment_status"] = "PAYABLE"
+            protocol_stats = json.loads(self.stats["protocol"])
             try:
                 bounty_str = self.bounties.get(submission["bounty_id"])
                 bounty = json.loads(bounty_str)
-                payable = float(dispute_review_data.get("recommended_payment_amount", bounty.get("reward_amount", 0)))
+                payable = float(dispute_review_data.get("adjusted_payment_amount", bounty.get("reward_amount", 0)))
                 recipient = gl.contract.get_at(Address(submission["translator"]))
-                recipient.emit_transfer(value=int(payable * 10**18))
+                recipient.emit_transfer(value=u256(int(payable * 10**18)))
             except Exception as e:
-                pass
+                protocol_stats["last_payout_error"] = str(e)
+                self.stats["protocol"] = json.dumps(protocol_stats)
         else:
             submission["payment_status"] = "WITHHELD"
             
