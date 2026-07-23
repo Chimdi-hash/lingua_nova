@@ -268,7 +268,7 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
         if review_data.get("release_payment"):
             submission["payment_status"] = "PAYABLE"
         else:
-            submission["payment_status"] = "WITHHELD"
+            submission["payment_status"] = "BURNED"
 
         self.submissions[submission_id] = json.dumps(submission)
 
@@ -428,7 +428,7 @@ Return ONLY valid JSON matching this schema exactly:
         if review_data.get("release_payment"):
             submission["payment_status"] = "PAYABLE"
         else:
-            submission["payment_status"] = "WITHHELD"
+            submission["payment_status"] = "BURNED"
 
         self.submissions[submission_id] = json.dumps(submission)
 
@@ -578,7 +578,7 @@ Return ONLY valid JSON matching this schema exactly:
                 protocol_stats["last_payout_error"] = str(e)
                 self.stats["protocol"] = json.dumps(protocol_stats)
         else:
-            submission["payment_status"] = "WITHHELD"
+            submission["payment_status"] = "BURNED"
             
         self.submissions[submission_id] = json.dumps(submission)
 
