@@ -5,6 +5,11 @@ import hashlib
 from genlayer import *
 import genlayer.gl.vm as glvm
 
+@gl.evm.contract_interface
+class _Recipient:
+    class View: pass
+    class Write: pass
+
 class LinguaNova(gl.Contract):
     # State mapping using TreeMap to store JSON strings
     bounties: TreeMap[str, str]
@@ -286,8 +291,7 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
                     protocol_stats["total_payable_amount"] += payable
                     self.stats["protocol"] = json.dumps(protocol_stats)
                     try:
-                        recipient = gl.get_contract_at(Address(submission["translator"]))
-                        recipient.emit_transfer(value=u256(int(payable * 10**18)))
+                        _Recipient(Address(submission["translator"])).emit(value=u256(int(payable * 10**18)), on='finalized')
                     except Exception as e:
                         protocol_stats["last_payout_error"] = str(e)
                         self.stats["protocol"] = json.dumps(protocol_stats)
@@ -442,8 +446,7 @@ Return ONLY valid JSON matching this schema exactly:
                 protocol_stats["total_payable_amount"] += payable
                 self.stats["protocol"] = json.dumps(protocol_stats)
                 try:
-                    recipient = gl.get_contract_at(Address(submission["translator"]))
-                    recipient.emit_transfer(value=u256(int(payable * 10**18)))
+                    _Recipient(Address(submission["translator"])).emit(value=u256(int(payable * 10**18)), on='finalized')
                 except Exception as e:
                     protocol_stats["last_payout_error"] = str(e)
                     self.stats["protocol"] = json.dumps(protocol_stats)
@@ -572,8 +575,7 @@ Return ONLY valid JSON matching this schema exactly:
                 bounty_str = self.bounties.get(submission["bounty_id"])
                 bounty = json.loads(bounty_str)
                 payable = float(dispute_review_data.get("adjusted_payment_amount", bounty.get("reward_amount", 0)))
-                recipient = gl.get_contract_at(Address(submission["translator"]))
-                recipient.emit_transfer(value=u256(int(payable * 10**18)))
+                _Recipient(Address(submission["translator"])).emit(value=u256(int(payable * 10**18)), on='finalized')
             except Exception as e:
                 protocol_stats["last_payout_error"] = str(e)
                 self.stats["protocol"] = json.dumps(protocol_stats)
