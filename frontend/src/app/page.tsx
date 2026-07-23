@@ -6,7 +6,7 @@ import { createAccount } from "viem/accounts";
 import { studionet } from "genlayer-js/chains";
 
 // Contract Address from Env or Fallback
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x09b75d55747bE79D0Eeb0d4d5539aE276D6d4f5E";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xA919893DEEcf2B67f6De79476a1205Ce6a560021";
 
 // Minimal Viem configuration for Wallet Connection
 import { createWalletClient, custom, publicActions, parseEther, formatEther } from "viem";
