@@ -5,7 +5,7 @@ import hashlib
 from genlayer import *
 import genlayer.gl.vm as glvm
 
-@gl.eth_contract
+@gl.contract_interface
 class _Recipient:
     pass
 
