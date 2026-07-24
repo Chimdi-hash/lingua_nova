@@ -7,7 +7,7 @@ async function main() {
   });
 
   const res = await client.readContract({
-    address: "0x761aEdc70a1d297E0EBfc9EAb602D52F6B3656cD",
+    address: "0x66Fe970AED201432Ab19bF276c09eEE04d04f492",
     functionName: "get_protocol_stats",
     args: [],
   });
