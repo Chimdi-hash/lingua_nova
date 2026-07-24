@@ -1,38 +1,23 @@
-import json
 from genlayer import *
+import json
 
-class Dumper(gl.Contract):
-    dump_data: str
-
+@gl.contract
+class Dumper:
     def __init__(self):
-        self.dump_data = "{}"
-
-    @gl.public.write
-    def dump_info(self, addr: str) -> None:
-        result = {}
-        
+        self.gl_dir = json.dumps(dir(gl))
         try:
-            result["gl_dir"] = dir(gl)
-        except Exception as e:
-            result["gl_dir_error"] = str(e)
-            
+            self.gl_contract_dir = json.dumps(dir(gl.contract))
+        except:
+            self.gl_contract_dir = "[]"
         try:
-            result["Address_dir"] = dir(Address(addr))
-        except Exception as e:
-            result["Address_dir_error"] = str(e)
-            
-        try:
-            result["gl_message_dir"] = dir(gl.message)
-        except Exception as e:
-            result["gl_message_dir_error"] = str(e)
-            
-        try:
-            result["gl_vm_dir"] = dir(gl.vm)
-        except Exception as e:
-            result["gl_vm_dir_error"] = str(e)
-            
-        self.dump_data = json.dumps(result)
+            self.gl_message_dir = json.dumps(dir(gl.message))
+        except:
+            self.gl_message_dir = "[]"
 
     @gl.public.view
     def get_dump(self) -> str:
-        return self.dump_data
+        return json.dumps({
+            "gl": self.gl_dir,
+            "gl.contract": self.gl_contract_dir,
+            "gl.message": self.gl_message_dir
+        })

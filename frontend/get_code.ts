@@ -8,7 +8,7 @@ async function main() {
 
   try {
     // The client might have a method to get contract code or details
-    const result = await client.getContractCode("0xEA0cD7A21D12fbd6c6e75b75a1e2B4E914295330");
+    const result = await client.getContractCode("0x2099171B8d4fF2135Ed50eF0959C725f4Fc3EDF2");
     console.log(result);
   } catch (e: any) {
     console.error("Failed getContractCode:", e.message);

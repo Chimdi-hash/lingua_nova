@@ -7,7 +7,10 @@ import genlayer.gl.vm as glvm
 
 @gl.contract_interface
 class _Recipient:
-    pass
+    class View:
+        pass
+    class Write:
+        pass
 
 class LinguaNova(gl.Contract):
     # State mapping using TreeMap to store JSON strings
@@ -445,7 +448,7 @@ Return ONLY valid JSON matching this schema exactly:
                 protocol_stats["total_payable_amount"] += payable
                 self.stats["protocol"] = json.dumps(protocol_stats)
                 try:
-                    _Recipient(Address(submission["translator"])).emit(value=u256(int(payable * 10**18)), on='finalized')
+                    _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
                 except Exception as e:
                     protocol_stats["last_payout_error"] = str(e)
                     self.stats["protocol"] = json.dumps(protocol_stats)
@@ -574,7 +577,7 @@ Return ONLY valid JSON matching this schema exactly:
                 bounty_str = self.bounties.get(submission["bounty_id"])
                 bounty = json.loads(bounty_str)
                 payable = float(dispute_review_data.get("adjusted_payment_amount", bounty.get("reward_amount", 0)))
-                _Recipient(Address(submission["translator"])).emit(value=u256(int(payable * 10**18)), on='finalized')
+                _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
             except Exception as e:
                 protocol_stats["last_payout_error"] = str(e)
                 self.stats["protocol"] = json.dumps(protocol_stats)
