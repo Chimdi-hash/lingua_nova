@@ -282,16 +282,14 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
             if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
                 rep["approved_count"] += 1
                 if submission["payment_status"] == "PAYABLE":
-                    payable_val = review_data.get("recommended_payment_amount")
-                    if payable_val is None:
-                        payable_val = bounty.get("reward_amount", 0)
-                    payable = float(payable_val)
+                    # Use the bounty reward_amount directly — this is the actual amount held by the contract
+                    payable = float(bounty.get("reward_amount", 0))
                     rep["total_payable_amount"] += payable
                     protocol_stats = json.loads(self.stats["protocol"])
                     protocol_stats["total_payable_amount"] += payable
                     self.stats["protocol"] = json.dumps(protocol_stats)
                     try:
-                        _Recipient(Address(submission["translator"])).emit(value=u256(int(payable * 10**18)), on='finalized')
+                        _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
                     except Exception as e:
                         protocol_stats["last_payout_error"] = str(e)
                         self.stats["protocol"] = json.dumps(protocol_stats)
@@ -440,7 +438,7 @@ Return ONLY valid JSON matching this schema exactly:
         if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
             rep["approved_count"] += 1
             if submission["payment_status"] == "PAYABLE":
-                payable = float(review_data.get("recommended_payment_amount", bounty.get("reward_amount", 0)))
+                payable = float(bounty.get("reward_amount", 0))
                 rep["total_payable_amount"] += payable
                 protocol_stats = json.loads(self.stats["protocol"])
                 protocol_stats["total_payable_amount"] += payable
