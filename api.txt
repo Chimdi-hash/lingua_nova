@@ -1,0 +1,6170 @@
+### changelog-notes/v0.1.3.txt
+
+Migration Guide
+***************
+
+This section provides code examples for migrating from v0.1.0 to
+v0.1.3:
+
+
+Contract Interfaces
+===================
+
+   # v0.1.0
+   contract = gl.ContractAt(address)
+   contract.view().some_method()
+   contract.emit().some_method()
+
+   # v0.1.3
+   contract = gl.get_contract_at(address)
+   contract.view().some_method()
+   contract.emit().some_method()
+
+
+Error handling
+==============
+
+   # v0.1.0
+   from genlayer import Rollback
+   gl.advanced.rollback_immediate("error message")
+
+   # v0.1.3
+   from genlayer.gl.vm import UserError  # or use gl.vm.UserError
+   gl.advanced.user_error_immediate("error message")
+
+
+VM operations
+=============
+
+   # v0.1.0
+   gl.advanced.run_nondet(leader_fn, validator_fn)
+
+   # v0.1.3
+   gl.vm.run_nondet(leader_fn, validator_fn)
+
+
+EVM contracts
+=============
+
+   # v0.1.0
+   @gl.eth_contract
+   class MyEthContract:
+       # contract definition
+
+   # v0.1.3
+   @gl.evm.contract_interface
+   class MyEthContract:
+       # contract definition
+
+
+Non-deterministic functions
+===========================
+
+   # v0.1.0
+   result = gl.get_webpage(url, mode='text')
+   response = gl.exec_prompt("prompt text")
+
+   # v0.1.3
+   result = gl.nondet.web.render(url, mode='text')
+   response = gl.nondet.exec_prompt("prompt text")
+
+
+Equivalence principles
+======================
+
+   # v0.1.0
+   result = gl.eq_principle_strict_eq(fn)
+   result = gl.eq_principle_prompt_comparative(fn, principle)
+
+   # v0.1.3
+   result = gl.eq_principle.strict_eq(fn)
+   result = gl.eq_principle.prompt_comparative(fn, principle)
+
+
+Breaking Changes
+****************
+
+1. Removed "Rollback" exception from top-level imports - use
+   "genlayer.gl.vm.UserError" instead
+
+2. Error handling methods now use "#error" and "#get-schema" special
+   method names from "genlayer.py.public_abi.SpecialMethod"
+
+3. Contract interface changes: "eth_contract" renamed to
+   "evm_contract_interface" in EVM module
+
+
+New Features
+************
+
+1. **Module reorganization**: Core functionality moved to
+   "genlayer.gl" namespace with lazy loading for better performance
+
+2. **Contract interface system**: New "@contract_interface" decorator
+   for type-safe contract interactions
+
+3. **Enhanced contract deployment**: "deploy_contract" function with
+   deterministic addressing via salt nonce
+
+4. **Contract proxy system**: "get_contract_at" function returns proxy
+   objects with "view()" and "emit()" methods
+
+5. **Advanced event system**: "Event" class with proper topic
+   generation and indexed field support
+
+6. **VM operations**: New "genlayer.gl.vm" module with "run_nondet",
+   "spawn_sandbox" functions
+
+7. **EVM integration**: Enhanced "genlayer.py.evm" module with
+   contract generation capabilities
+
+8. **Equivalence principles**: New "genlayer.gl.eq_principle" module
+   with "strict_eq", "prompt_comparative", "prompt_non_comparative"
+
+9. **Advanced utilities**: "genlayer.gl.advanced" module with
+   "user_error_immediate" and "emit_raw_event"
+
+
+API Improvements
+****************
+
+1. Storage system improvements with better slot management
+
+2. Type annotations added for WASI bindings ("_genlayer_wasi.pyi")
+
+3. Enhanced error handling with "UserError" replacing "Rollback"
+
+4. Better lazy loading system for improved import performance
+
+5. Documentation generation support with "GENERATING_DOCS" environment
+   variable
+
+
+### changelog-notes/v0.1.8.txt
+
+Breaking Changes
+****************
+
+1. Calldata encoding behavior changed - dataclasses now encoded
+   automatically without requiring custom "default" parameter
+
+2. "genlayer.py.public_abi" file marked as auto-generated - manual
+   edits will be overwritten
+
+
+New Features
+************
+
+1. **Enhanced calldata encoding**: Automatic dataclass encoding
+   support without custom default functions
+
+2. **Standardized error types**: New "VmError" enum for consistent
+   error handling across the platform
+
+3. **Extended public ABI**: Additional constants for internal VM
+   operations ("CODE_SLOT_OFFSET")
+
+
+API Improvements
+****************
+
+1. Simplified dataclass serialization - no longer requires explicit
+   "default" parameter in "calldata.encode()"
+
+2. Better type safety with standardized error enums
+
+3. Cleaner API for encoding complex data structures
+
+
+### changelog-notes/v0.3.txt
+
+v0.3.0
+******
+
+
+Migration Guide
+===============
+
+v0.3.0 introduces a major restructuring of the standard library. The
+"genlayer.gl" and "genlayer.py" intermediate packages are removed. All
+public API is now accessible directly under the "genlayer" namespace.
+
+
+Import Pattern
+--------------
+
+The recommended import pattern has changed:
+
+   # v0.1.x
+   from genlayer import *
+
+   # v0.3.0
+   import genlayer as gl
+   from genlayer.types import *
+
+The "from genlayer import *" star-import previously brought "gl" (a
+lazy proxy to "genlayer.gl"), all types, and storage names into scope.
+Now "import genlayer as gl" gives you direct access to submodules
+("gl.contract", "gl.vm", "gl.message", etc.), decorators ("gl.public",
+"gl.private"), and storage types ("gl.TreeMap", "gl.DynArray",
+"gl.Array"). The "from genlayer.types import *" import brings the type
+aliases ("u8"..``u256``, "i8"..``i256``, "Address", "bigint", etc.)
+into local scope.
+
+
+Module Path Changes
+-------------------
+
+All "genlayer.py.*" and "genlayer.gl.*" paths are removed. Here is the
+mapping:
+
++----------------------------------------------------+----------------------------------------------------+
+| v0.1.x                                             | v0.3.0                                             |
+|====================================================|====================================================|
+| "genlayer.py.types"                                | "genlayer.types"                                   |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.py.calldata"                             | "genlayer.calldata"                                |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.py.storage"                              | "genlayer.storage"                                 |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.py.evm"                                  | "genlayer.evm"                                     |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.gl.vm"                                   | "genlayer.vm"                                      |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.gl.nondet"                               | "genlayer.nondet"                                  |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.gl.eq_principle"                         | "genlayer.eq_principle"                            |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.gl.genvm_contracts"                      | "genlayer.contract"                                |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.gl.annotations"                          | "genlayer._internal.annotations"                   |
++----------------------------------------------------+----------------------------------------------------+
+| "genlayer.gl.advanced"                             | removed (see below)                                |
++----------------------------------------------------+----------------------------------------------------+
+
+
+Contract Declaration
+--------------------
+
+"gl.Contract" is now "gl.contract.Contract":
+
+   # v0.1.x
+   class MyToken(gl.Contract):
+       ...
+
+   # v0.3.0
+   class MyToken(gl.contract.Contract):
+       ...
+
+
+Contract Interaction
+--------------------
+
+Functions for interacting with other contracts have been renamed and
+moved into "gl.contract":
+
+   # v0.1.x
+   contract = gl.get_contract_at(address)
+   gl.deploy_contract(code=source, args=[...])
+
+   @gl.contract_interface
+   class IToken:
+       class View:
+           def balance_of(self, owner: Address) -> u256: ...
+
+   # v0.3.0
+   contract = gl.contract.get_at(address)
+   gl.contract.deploy(code=source, args=[...])
+
+   @gl.contract.interface
+   class IToken:
+       class View:
+           def balance_of(self, owner: Address) -> u256: ...
+
+The "ContractProxy" type is renamed to "gl.contract.Proxy".
+
+
+Message Context
+---------------
+
+The "gl.message" object was a "NamedTuple". It is now a module
+("genlayer.message") with the same fields as module-level attributes:
+
+   # v0.1.x
+   sender = gl.message.sender_address
+   value = gl.message.value
+
+   # v0.3.0 (identical usage, but gl.message is a module now)
+   sender = gl.message.sender_address
+   value = gl.message.value
+
+"gl.message_raw" is now "gl.message.raw".
+
+
+Events
+------
+
+The "Event" class has moved from "genlayer.gl" to "genlayer.vm":
+
+   # v0.1.x
+   class Transfer(gl.Event):
+       def __init__(self, sender: Address, to: Address, /): ...
+
+   # v0.3.0
+   class Transfer(gl.vm.Event):
+       def __init__(self, sender: Address, to: Address, /): ...
+
+"gl.advanced.emit_raw_event(topics, blob)" is now
+"gl.vm.Event.emit_raw(topics, blob)".
+
+
+Advanced / Error Handling
+-------------------------
+
+The "genlayer.gl.advanced" module is removed. Its functionality has
+been relocated:
+
+   # v0.1.x
+   gl.advanced.user_error_immediate("reason")
+   gl.advanced.emit_raw_event(topics, blob)
+
+   # v0.3.0
+   gl.vm.UserError.immediate("reason")
+   gl.vm.Event.emit_raw(topics, blob)
+
+
+VM Tracing
+----------
+
+Trace functions have moved from "genlayer.gl" to "genlayer.vm":
+
+   # v0.1.x
+   gl.trace("debug message")
+   gl.trace_time_micro()
+
+   # v0.3.0
+   gl.vm.trace("debug message")
+   gl.vm.trace_time_micro()
+
+
+Storage
+-------
+
+"allow_storage" decorator is renamed to "allow":
+
+   # v0.1.x
+   @gl.storage.allow_storage
+   class MyRecord:
+       x: u32
+
+   # v0.3.0
+   @gl.storage.allow
+   class MyRecord:
+       x: u32
+
+A new "gl.storage.Pickled[T]" helper is available for storing
+arbitrary picklable objects.
+
+
+Decorators
+----------
+
+"gl.public" and "gl.private" are still available directly on "gl":
+
+   # Both v0.1.x and v0.3.0
+   @gl.public.write
+   def transfer(self, to: Address, amount: u256): ...
+
+   @gl.public.view
+   def balance_of(self, owner: Address) -> u256: ...
+
+
+Summary of Renames
+------------------
+
++----------------------------------------------------+----------------------------------------------------+
+| v0.1.x                                             | v0.3.0                                             |
+|====================================================|====================================================|
+| "gl.Contract"                                      | "gl.contract.Contract"                             |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.contract_interface"                            | "gl.contract.interface"                            |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.deploy_contract(...)"                          | "gl.contract.deploy(...)"                          |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.get_contract_at(addr)"                         | "gl.contract.get_at(addr)"                         |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.ContractProxy"                                 | "gl.contract.Proxy"                                |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.Event"                                         | "gl.vm.Event"                                      |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.advanced.user_error_immediate(...)"            | "gl.vm.UserError.immediate(...)"                   |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.advanced.emit_raw_event(...)"                  | "gl.vm.Event.emit_raw(...)"                        |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.trace(...)"                                    | "gl.vm.trace(...)"                                 |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.trace_time_micro()"                            | "gl.vm.trace_time_micro()"                         |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.message_raw"                                   | "gl.message.raw"                                   |
++----------------------------------------------------+----------------------------------------------------+
+| "gl.storage.allow_storage"                         | "gl.storage.allow"                                 |
++----------------------------------------------------+----------------------------------------------------+
+
+
+### changelog.txt
+
+Changelog
+*********
+
+Release history for the Python SDK, including API changes and runner
+version updates.
+
+
+v0.2.5
+======
+
+*fix: node pre-merge update*
+
+No runner changes from v0.2.4.
+
+
+v0.2.4
+======
+
+*fix: patch det violation*
+
+No runner changes from v0.2.1.
+
+
+v0.2.1
+======
+
+*fix: arm64-linux build*
+
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| Runner                        | From                                                       | To                                                         |
+|===============================|============================================================|============================================================|
+| cpython                       | "1s66bd44b80habdw2ayf4hyncvpkmmjwva0h6nkk738flsd5nis0"     | "1bk9g3zgym0rrpd9lk584cxfaa4rg0cz36w6xhzkqdj1m2p4xa9n"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| models-all-MiniLM-L6-v2       | "1sfhqijjsnsf6ik1zvdv4vxjidrjhsbnk1vgs1c5ksgv193flyqb"     | "0d1skbkxl1ij1sfm0jvnh18ih5a9mxfiny0myqnyf0wa5jc50mis"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-genlayer                   | "132536jbnxkd1axfxg5rpfr5b60cr11adm2y4r90hgn0l59qsp9w"     | "1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-genlayer-multi             | "0iddpsb7hsrqv10xf4sjdiknba0m3fkm2x9xldy7ci3gj1fpkpjy"     | "06zyvrlivjga0d5jlpdbprksc0pa6jmllxvp8s20hq1l512vh5yk"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-lib-cloudpickle            | "1pqxan7lxsjrvs66b4a7k81w7rrgbsqi3hxhp7b4bn4gks1b64rb"     | "1dlk6mnfabi0z7r39635amyfzw8xb6rm8bv4pmgv6ji1bfx9hghd"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-embeddings    | "09h0i209wrzh4xzq86f79c60x0ifs7xcjwl53ysrnw06i54ddxyi"     | "0bmbm3cyfwxsyh454z53vxqjf47wz2q7smcqp1q4g4a6k2kidnyk"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-std           | "0mmsw09shx3613jzkhbmqyqw60h6b27hy7bjdbb1msfp40g2idi6"     | "11rhn002yfajawsz7fai6mykznbxkxs6l91iskj5cm82c92qhy3v"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-lib-word_piece_tokenizer   | "0m4yvkrbqnyygs4g3mmp11kprylks23q9m0pxnkpm1fg4kpck3qq"     | "0vjc9x1qqv7bgkf9aldqsi708892vzh2w7mwzhq6w1174qan4bas"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+| softfloat                     | "17b5yad9r9jzcflawqi12r5llhgklfr6lp75r915r99l4wg8ni4n"     | "08g85lmbfjngvvjyx1gr1pyk61nqba0y42gba8wrb1qd3zkv2gmd"     |
++-------------------------------+------------------------------------------------------------+------------------------------------------------------------+
+
+Commits touching runners:
+
+* "chore: repair release"
+
+* "embeddings related improvements (#241)"
+
+* "Batch update (#238)"
+
+* "Batch update (#235)"
+
+* "spec: second iteration (#233)"
+
+* "Batch update (#230)"
+
+* "chore: prepare for release"
+
+* "batch update (#227)"
+
++-------------------------------+------------------------------------------------------------+
+| Runner                        | Hash                                                       |
+|===============================|============================================================|
+| cpython                       | "1bk9g3zgym0rrpd9lk584cxfaa4rg0cz36w6xhzkqdj1m2p4xa9n"     |
++-------------------------------+------------------------------------------------------------+
+| models-all-MiniLM-L6-v2       | "0d1skbkxl1ij1sfm0jvnh18ih5a9mxfiny0myqnyf0wa5jc50mis"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer                   | "1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer-multi             | "06zyvrlivjga0d5jlpdbprksc0pa6jmllxvp8s20hq1l512vh5yk"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-cloudpickle            | "1dlk6mnfabi0z7r39635amyfzw8xb6rm8bv4pmgv6ji1bfx9hghd"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-embeddings    | "0bmbm3cyfwxsyh454z53vxqjf47wz2q7smcqp1q4g4a6k2kidnyk"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-std           | "11rhn002yfajawsz7fai6mykznbxkxs6l91iskj5cm82c92qhy3v"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-protobuf               | "0riri6vk1ma3cnmlwls3d4771y0cf3c44afsl6gwfmnl2cpcbdl1"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-word_piece_tokenizer   | "0vjc9x1qqv7bgkf9aldqsi708892vzh2w7mwzhq6w1174qan4bas"     |
++-------------------------------+------------------------------------------------------------+
+| softfloat                     | "08g85lmbfjngvvjyx1gr1pyk61nqba0y42gba8wrb1qd3zkv2gmd"     |
++-------------------------------+------------------------------------------------------------+
+
+
+v0.1.8-runner-hash___
+=====================
+
+
+Breaking Changes
+----------------
+
+1. Calldata encoding behavior changed - dataclasses now encoded
+   automatically without requiring custom "default" parameter
+
+2. "genlayer.py.public_abi" file marked as auto-generated - manual
+   edits will be overwritten
+
+
+New Features
+------------
+
+1. **Enhanced calldata encoding**: Automatic dataclass encoding
+   support without custom default functions
+
+2. **Standardized error types**: New "VmError" enum for consistent
+   error handling across the platform
+
+3. **Extended public ABI**: Additional constants for internal VM
+   operations ("CODE_SLOT_OFFSET")
+
+
+API Improvements
+----------------
+
+1. Simplified dataclass serialization - no longer requires explicit
+   "default" parameter in "calldata.encode()"
+
+2. Better type safety with standardized error enums
+
+3. Cleaner API for encoding complex data structures
+
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+| Runner                | From                                                       | To                                                         |
+|=======================|============================================================|============================================================|
+| py-genlayer           | "1j12s63yfjpva9ik2xgnffgrs6v44y1f52jvj9w7xvdn7qckd379"     | "132536jbnxkd1axfxg5rpfr5b60cr11adm2y4r90hgn0l59qsp9w"     |
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-genlayer-multi     | "0xn02qjjqlpxadhs124cwrr5ddqs7dxcc6m5a7c6801hv54l66p0"     | "0iddpsb7hsrqv10xf4sjdiknba0m3fkm2x9xldy7ci3gj1fpkpjy"     |
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-std   | "1mds1jiy7phn7b7irqviwbl8lp026dsxfkzv88gj0lkmvcqk5aak"     | "0mmsw09shx3613jzkhbmqyqw60h6b27hy7bjdbb1msfp40g2idi6"     |
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+
+Commits touching runners:
+
+* "chore: update hashes"
+
+* "fix: aboid asdict in calldata"
+
+* "chore: add codegen"
+
++-------------------------------+------------------------------------------------------------+
+| Runner                        | Hash                                                       |
+|===============================|============================================================|
+| cpython                       | "1s66bd44b80habdw2ayf4hyncvpkmmjwva0h6nkk738flsd5nis0"     |
++-------------------------------+------------------------------------------------------------+
+| models-all-MiniLM-L6-v2       | "1sfhqijjsnsf6ik1zvdv4vxjidrjhsbnk1vgs1c5ksgv193flyqb"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer                   | "132536jbnxkd1axfxg5rpfr5b60cr11adm2y4r90hgn0l59qsp9w"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer-multi             | "0iddpsb7hsrqv10xf4sjdiknba0m3fkm2x9xldy7ci3gj1fpkpjy"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-cloudpickle            | "1pqxan7lxsjrvs66b4a7k81w7rrgbsqi3hxhp7b4bn4gks1b64rb"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-embeddings    | "09h0i209wrzh4xzq86f79c60x0ifs7xcjwl53ysrnw06i54ddxyi"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-std           | "0mmsw09shx3613jzkhbmqyqw60h6b27hy7bjdbb1msfp40g2idi6"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-protobuf               | "0riri6vk1ma3cnmlwls3d4771y0cf3c44afsl6gwfmnl2cpcbdl1"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-word_piece_tokenizer   | "0m4yvkrbqnyygs4g3mmp11kprylks23q9m0pxnkpm1fg4kpck3qq"     |
++-------------------------------+------------------------------------------------------------+
+| softfloat                     | "17b5yad9r9jzcflawqi12r5llhgklfr6lp75r915r99l4wg8ni4n"     |
++-------------------------------+------------------------------------------------------------+
+
+
+v0.1.3
+======
+
+*fix: hotfix for studio*
+
+
+Migration Guide
+---------------
+
+This section provides code examples for migrating from v0.1.0 to
+v0.1.3:
+
+
+Contract Interfaces
+~~~~~~~~~~~~~~~~~~~
+
+   # v0.1.0
+   contract = gl.ContractAt(address)
+   contract.view().some_method()
+   contract.emit().some_method()
+
+   # v0.1.3
+   contract = gl.get_contract_at(address)
+   contract.view().some_method()
+   contract.emit().some_method()
+
+
+Error handling
+~~~~~~~~~~~~~~
+
+   # v0.1.0
+   from genlayer import Rollback
+   gl.advanced.rollback_immediate("error message")
+
+   # v0.1.3
+   from genlayer.gl.vm import UserError  # or use gl.vm.UserError
+   gl.advanced.user_error_immediate("error message")
+
+
+VM operations
+~~~~~~~~~~~~~
+
+   # v0.1.0
+   gl.advanced.run_nondet(leader_fn, validator_fn)
+
+   # v0.1.3
+   gl.vm.run_nondet(leader_fn, validator_fn)
+
+
+EVM contracts
+~~~~~~~~~~~~~
+
+   # v0.1.0
+   @gl.eth_contract
+   class MyEthContract:
+       # contract definition
+
+   # v0.1.3
+   @gl.evm.contract_interface
+   class MyEthContract:
+       # contract definition
+
+
+Non-deterministic functions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   # v0.1.0
+   result = gl.get_webpage(url, mode='text')
+   response = gl.exec_prompt("prompt text")
+
+   # v0.1.3
+   result = gl.nondet.web.render(url, mode='text')
+   response = gl.nondet.exec_prompt("prompt text")
+
+
+Equivalence principles
+~~~~~~~~~~~~~~~~~~~~~~
+
+   # v0.1.0
+   result = gl.eq_principle_strict_eq(fn)
+   result = gl.eq_principle_prompt_comparative(fn, principle)
+
+   # v0.1.3
+   result = gl.eq_principle.strict_eq(fn)
+   result = gl.eq_principle.prompt_comparative(fn, principle)
+
+
+Breaking Changes
+----------------
+
+1. Removed "Rollback" exception from top-level imports - use
+   "genlayer.gl.vm.UserError" instead
+
+2. Error handling methods now use "#error" and "#get-schema" special
+   method names from "genlayer.py.public_abi.SpecialMethod"
+
+3. Contract interface changes: "eth_contract" renamed to
+   "evm_contract_interface" in EVM module
+
+
+New Features
+------------
+
+1. **Module reorganization**: Core functionality moved to
+   "genlayer.gl" namespace with lazy loading for better performance
+
+2. **Contract interface system**: New "@contract_interface" decorator
+   for type-safe contract interactions
+
+3. **Enhanced contract deployment**: "deploy_contract" function with
+   deterministic addressing via salt nonce
+
+4. **Contract proxy system**: "get_contract_at" function returns proxy
+   objects with "view()" and "emit()" methods
+
+5. **Advanced event system**: "Event" class with proper topic
+   generation and indexed field support
+
+6. **VM operations**: New "genlayer.gl.vm" module with "run_nondet",
+   "spawn_sandbox" functions
+
+7. **EVM integration**: Enhanced "genlayer.py.evm" module with
+   contract generation capabilities
+
+8. **Equivalence principles**: New "genlayer.gl.eq_principle" module
+   with "strict_eq", "prompt_comparative", "prompt_non_comparative"
+
+9. **Advanced utilities**: "genlayer.gl.advanced" module with
+   "user_error_immediate" and "emit_raw_event"
+
+
+API Improvements
+----------------
+
+1. Storage system improvements with better slot management
+
+2. Type annotations added for WASI bindings ("_genlayer_wasi.pyi")
+
+3. Enhanced error handling with "UserError" replacing "Rollback"
+
+4. Better lazy loading system for improved import performance
+
+5. Documentation generation support with "GENERATING_DOCS" environment
+   variable
+
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+| Runner                | From                                                       | To                                                         |
+|=======================|============================================================|============================================================|
+| py-genlayer           | "15qfivjvy80800rh998pcxmd2m8va1wq2qzqhz850n8ggcr4i9q0"     | "1j12s63yfjpva9ik2xgnffgrs6v44y1f52jvj9w7xvdn7qckd379"     |
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-genlayer-multi     | "0cwifyzi3956f9yxdpq5kk3ihazv2llsxfj626zbadrg4cizwhq5"     | "0xn02qjjqlpxadhs124cwrr5ddqs7dxcc6m5a7c6801hv54l66p0"     |
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-std   | "0asq35p8mzlzwgxcrx5v51srnsqyj72cq7993way1vqddwxcvkq4"     | "1mds1jiy7phn7b7irqviwbl8lp026dsxfkzv88gj0lkmvcqk5aak"     |
++-----------------------+------------------------------------------------------------+------------------------------------------------------------+
+
+Commits touching runners:
+
+* "batch update (#226)"
+
+* "Batch update (#225)"
+
++-------------------------------+------------------------------------------------------------+
+| Runner                        | Hash                                                       |
+|===============================|============================================================|
+| cpython                       | "1s66bd44b80habdw2ayf4hyncvpkmmjwva0h6nkk738flsd5nis0"     |
++-------------------------------+------------------------------------------------------------+
+| models-all-MiniLM-L6-v2       | "1sfhqijjsnsf6ik1zvdv4vxjidrjhsbnk1vgs1c5ksgv193flyqb"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer                   | "1j12s63yfjpva9ik2xgnffgrs6v44y1f52jvj9w7xvdn7qckd379"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer-multi             | "0xn02qjjqlpxadhs124cwrr5ddqs7dxcc6m5a7c6801hv54l66p0"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-cloudpickle            | "1pqxan7lxsjrvs66b4a7k81w7rrgbsqi3hxhp7b4bn4gks1b64rb"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-embeddings    | "09h0i209wrzh4xzq86f79c60x0ifs7xcjwl53ysrnw06i54ddxyi"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-std           | "1mds1jiy7phn7b7irqviwbl8lp026dsxfkzv88gj0lkmvcqk5aak"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-protobuf               | "0riri6vk1ma3cnmlwls3d4771y0cf3c44afsl6gwfmnl2cpcbdl1"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-word_piece_tokenizer   | "0m4yvkrbqnyygs4g3mmp11kprylks23q9m0pxnkpm1fg4kpck3qq"     |
++-------------------------------+------------------------------------------------------------+
+| softfloat                     | "17b5yad9r9jzcflawqi12r5llhgklfr6lp75r915r99l4wg8ni4n"     |
++-------------------------------+------------------------------------------------------------+
+
+
+v0.1.0
+======
+
+*fix: cross compilation*
+
++-------------------------------+---------+------------------------------------------------------------+
+| Runner                        | From    | To                                                         |
+|===============================|=========|============================================================|
+| cpython                       | *new*   | "1s66bd44b80habdw2ayf4hyncvpkmmjwva0h6nkk738flsd5nis0"     |
++-------------------------------+---------+------------------------------------------------------------+
+| models-all-MiniLM-L6-v2       | *new*   | "1sfhqijjsnsf6ik1zvdv4vxjidrjhsbnk1vgs1c5ksgv193flyqb"     |
++-------------------------------+---------+------------------------------------------------------------+
+| py-genlayer                   | *new*   | "15qfivjvy80800rh998pcxmd2m8va1wq2qzqhz850n8ggcr4i9q0"     |
++-------------------------------+---------+------------------------------------------------------------+
+| py-genlayer-multi             | *new*   | "0cwifyzi3956f9yxdpq5kk3ihazv2llsxfj626zbadrg4cizwhq5"     |
++-------------------------------+---------+------------------------------------------------------------+
+| py-lib-cloudpickle            | *new*   | "1pqxan7lxsjrvs66b4a7k81w7rrgbsqi3hxhp7b4bn4gks1b64rb"     |
++-------------------------------+---------+------------------------------------------------------------+
+| py-lib-genlayer-embeddings    | *new*   | "09h0i209wrzh4xzq86f79c60x0ifs7xcjwl53ysrnw06i54ddxyi"     |
++-------------------------------+---------+------------------------------------------------------------+
+| py-lib-genlayer-std           | *new*   | "0asq35p8mzlzwgxcrx5v51srnsqyj72cq7993way1vqddwxcvkq4"     |
++-------------------------------+---------+------------------------------------------------------------+
+| py-lib-protobuf               | *new*   | "0riri6vk1ma3cnmlwls3d4771y0cf3c44afsl6gwfmnl2cpcbdl1"     |
++-------------------------------+---------+------------------------------------------------------------+
+| py-lib-word_piece_tokenizer   | *new*   | "0m4yvkrbqnyygs4g3mmp11kprylks23q9m0pxnkpm1fg4kpck3qq"     |
++-------------------------------+---------+------------------------------------------------------------+
+| softfloat                     | *new*   | "17b5yad9r9jzcflawqi12r5llhgklfr6lp75r915r99l4wg8ni4n"     |
++-------------------------------+---------+------------------------------------------------------------+
+
++-------------------------------+------------------------------------------------------------+
+| Runner                        | Hash                                                       |
+|===============================|============================================================|
+| cpython                       | "1s66bd44b80habdw2ayf4hyncvpkmmjwva0h6nkk738flsd5nis0"     |
++-------------------------------+------------------------------------------------------------+
+| models-all-MiniLM-L6-v2       | "1sfhqijjsnsf6ik1zvdv4vxjidrjhsbnk1vgs1c5ksgv193flyqb"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer                   | "15qfivjvy80800rh998pcxmd2m8va1wq2qzqhz850n8ggcr4i9q0"     |
++-------------------------------+------------------------------------------------------------+
+| py-genlayer-multi             | "0cwifyzi3956f9yxdpq5kk3ihazv2llsxfj626zbadrg4cizwhq5"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-cloudpickle            | "1pqxan7lxsjrvs66b4a7k81w7rrgbsqi3hxhp7b4bn4gks1b64rb"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-embeddings    | "09h0i209wrzh4xzq86f79c60x0ifs7xcjwl53ysrnw06i54ddxyi"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-genlayer-std           | "0asq35p8mzlzwgxcrx5v51srnsqyj72cq7993way1vqddwxcvkq4"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-protobuf               | "0riri6vk1ma3cnmlwls3d4771y0cf3c44afsl6gwfmnl2cpcbdl1"     |
++-------------------------------+------------------------------------------------------------+
+| py-lib-word_piece_tokenizer   | "0m4yvkrbqnyygs4g3mmp11kprylks23q9m0pxnkpm1fg4kpck3qq"     |
++-------------------------------+------------------------------------------------------------+
+| softfloat                     | "17b5yad9r9jzcflawqi12r5llhgklfr6lp75r915r99l4wg8ni4n"     |
++-------------------------------+------------------------------------------------------------+
+
+
+### guides/boot_process.txt
+
+Startup Process
+***************
+
+Standard library provides a built-in bootloader that bridges internal
+ABI to a more Pythonic interface.
+
+Bootloader is located in module "_genlayer_bootloader" and is executed
+on import.
+
+
+Bootloader Module
+=================
+
+"_genlayer_bootloader" handles contract execution in three distinct
+modes:
+
+
+Entry Points
+------------
+
+The bootloader dispatches execution based on "entry_kind" from the VM
+message:
+
+
+MAIN
+~~~~
+
+Handles standard contract method calls and initialization.
+
+* Loads user "contract" module and resolves the target method of a
+  declared "Contract" class
+
+* Validates method access permissions (public/private, payable)
+
+* Handles special methods: "__receive__",
+  "__handle_undefined_method__"
+
+* Routes initialization calls to "__init__" method
+
+* Enforces security restrictions on dunder methods
+
+
+SANDBOX
+~~~~~~~
+
+Executes pickled function objects.
+
+
+CONSENSUS_STAGE
+~~~~~~~~~~~~~~~
+
+Runs consensus stage functions with additional stage data parameter
+(leader non-deterministic blocks outputs or "None").
+
+
+Method Resolution
+-----------------
+
+For MAIN entry kind, the bootloader implements comprehensive method
+resolution:
+
+* **Initialization**: Routes to private "__init__" method during
+  contract deployment
+
+* **Named Methods**: Resolves public method calls by name with
+  validation
+
+* **Special Handling**: Supports "__receive__" for direct calls and
+  "__handle_undefined_method__" for undefined method calls
+
+* **Security**: Blocks calls to methods starting with "__" and unknown
+  special methods starting with "#"
+
+
+Error Handling
+--------------
+
+The bootloader provides centralized error management:
+
+* Catches "genlayer.gl.vm.UserError" exceptions and triggers rollback
+  with error message
+
+* Validates contract structure and method accessibility
+
+* Returns appropriate error messages for invalid method calls
+
+
+Profiling Support
+-----------------
+
+Optional performance profiling when "GENLAYER_ENABLE_PROFILER"
+environment variable is set to "true":
+
+* Uses "cProfile" with microsecond timing precision
+
+* Outputs compressed, base64-encoded statistics to stderr on exit
+
+* Integrates with *GenVM* debugging infrastructure
+
+
+Storage Integration
+-------------------
+
+Manages contract storage lifecycle:
+
+* Locks default *Storage Slot*s during contract initialization
+
+* Provides contract instance from the root slot
+
+
+### guides/floating_point.txt
+
+Floating Point in Python API
+****************************
+
+GenVM handles floating point arithmetic differently depending on the
+execution mode.
+
+
+Non-Deterministic Mode
+======================
+
+In non-deterministic mode, floating point operations are unrestricted.
+Standard hardware-native IEEE 754 floating point is used directly,
+providing full performance with no additional overhead.
+
+
+Deterministic Mode
+==================
+
+In deterministic mode, GenVM uses a software-implemented IEEE 754
+floating point via integer arithmetic. This ensures that floating
+point computations produce bit-exact identical results across all
+validator nodes, regardless of the underlying hardware or platform.
+Native floating point instructions can yield slightly different
+results depending on the CPU architecture, compiler optimizations, or
+rounding behavior, which would break consensus. The software
+implementation eliminates this source of non-determinism at the cost
+of **significant** performance overhead.
+
+
+### guides/index.txt
+
+Guides
+******
+
+* Startup Process
+
+  * Bootloader Module
+
+    * Entry Points
+
+      * MAIN
+
+      * SANDBOX
+
+      * CONSENSUS_STAGE
+
+    * Method Resolution
+
+    * Error Handling
+
+    * Profiling Support
+
+    * Storage Integration
+
+* Floating Point in Python API
+
+  * Non-Deterministic Mode
+
+  * Deterministic Mode
+
+
+### index.txt
+
+Python SDK
+**********
+
+The "genlayer" Python package is the intelligent contract SDK for
+writing contracts that run inside GenVM. For tutorials and getting
+started guides, see the main documentation.
+
+* Introduction
+
+* API Reference
+
+  * Package genlayer
+
+    * Top level
+
+      * "Address"
+
+        * "Address.SIZE"
+
+        * "Address.ZERO"
+
+        * "Address.__eq__()"
+
+        * "Address.__format__()"
+
+        * "Address.__ge__()"
+
+        * "Address.__gt__()"
+
+        * "Address.__hash__()"
+
+        * "Address.__init__()"
+
+        * "Address.__le__()"
+
+        * "Address.__lt__()"
+
+        * "Address.__repr__()"
+
+        * "Address.__str__()"
+
+        * "Address.as_b64"
+
+        * "Address.as_bytes"
+
+        * "Address.as_hex"
+
+        * "Address.as_int"
+
+      * "Array"
+
+        * "Array.__contains__()"
+
+        * "Array.__getitem__()"
+
+        * "Array.__init__()"
+
+        * "Array.__iter__()"
+
+        * "Array.__len__()"
+
+        * "Array.__non_callable_proto_members__"
+
+        * "Array.__setitem__()"
+
+        * "Array.count()"
+
+        * "Array.index()"
+
+      * "DynArray"
+
+        * "DynArray.__contains__()"
+
+        * "DynArray.__delitem__()"
+
+        * "DynArray.__getitem__()"
+
+        * "DynArray.__iadd__()"
+
+        * "DynArray.__init__()"
+
+        * "DynArray.__iter__()"
+
+        * "DynArray.__len__()"
+
+        * "DynArray.__repr__()"
+
+        * "DynArray.__setitem__()"
+
+        * "DynArray.append()"
+
+        * "DynArray.append_new_get()"
+
+        * "DynArray.assign()"
+
+        * "DynArray.clear()"
+
+        * "DynArray.count()"
+
+        * "DynArray.extend()"
+
+        * "DynArray.index()"
+
+        * "DynArray.insert()"
+
+        * "DynArray.pop()"
+
+        * "DynArray.remove()"
+
+        * "DynArray.reverse()"
+
+      * "Keccak256()"
+
+      * "Lazy"
+
+        * "Lazy.__init__()"
+
+        * "Lazy.get()"
+
+      * "SizedArray"
+
+        * "SizedArray.__getitem__()"
+
+        * "SizedArray.__init__()"
+
+        * "SizedArray.__iter__()"
+
+        * "SizedArray.__len__()"
+
+        * "SizedArray.__non_callable_proto_members__"
+
+      * "TreeMap"
+
+        * "TreeMap.__contains__()"
+
+        * "TreeMap.__delitem__()"
+
+        * "TreeMap.__eq__()"
+
+        * "TreeMap.__getitem__()"
+
+        * "TreeMap.__gl_allow_storage__"
+
+        * "TreeMap.__hash__"
+
+        * "TreeMap.__iter__()"
+
+        * "TreeMap.__len__()"
+
+        * "TreeMap.__repr__()"
+
+        * "TreeMap.__setitem__()"
+
+        * "TreeMap.assign()"
+
+        * "TreeMap.clear()"
+
+        * "TreeMap.compute_if_absent()"
+
+        * "TreeMap.get()"
+
+        * "TreeMap.get_or_insert_default()"
+
+        * "TreeMap.items()"
+
+        * "TreeMap.keys()"
+
+        * "TreeMap.pop()"
+
+        * "TreeMap.popitem()"
+
+        * "TreeMap.setdefault()"
+
+        * "TreeMap.update()"
+
+        * "TreeMap.values()"
+
+      * "private()"
+
+      * "public"
+
+        * "public.view()"
+
+        * "public.write"
+
+      * Integer aliases
+
+    * contract
+
+      * "Contract"
+
+        * "Contract.address"
+
+        * "Contract.balance"
+
+        * "Contract.emit_transfer()"
+
+      * "GenVMContractDeclaration"
+
+        * "GenVMContractDeclaration.View"
+
+        * "GenVMContractDeclaration.Write"
+
+        * "GenVMContractDeclaration.__init__()"
+
+      * "Proxy"
+
+        * "Proxy.emit()"
+
+        * "Proxy.emit_transfer()"
+
+        * "Proxy.view()"
+
+      * "StorageType"
+
+        * "StorageType.DEFAULT"
+
+        * "StorageType.LATEST_FINAL"
+
+        * "StorageType.LATEST_NON_FINAL"
+
+        * "StorageType.__new__()"
+
+      * "deploy()"
+
+      * "get_at()"
+
+      * "interface()"
+
+    * message
+
+      * "MessageRawType"
+
+        * "MessageRawType.chain_id"
+
+        * "MessageRawType.contract_address"
+
+        * "MessageRawType.datetime"
+
+        * "MessageRawType.entry_data"
+
+        * "MessageRawType.entry_kind"
+
+        * "MessageRawType.entry_stage_data"
+
+        * "MessageRawType.is_init"
+
+        * "MessageRawType.origin_address"
+
+        * "MessageRawType.sender_address"
+
+        * "MessageRawType.stack"
+
+        * "MessageRawType.value"
+
+      * "chain_id"
+
+      * "contract_address"
+
+      * "entry_data"
+
+      * "entry_kind"
+
+      * "entry_stage_data"
+
+      * "is_init"
+
+      * "origin_address"
+
+      * "raw"
+
+      * "sender_address"
+
+      * "stack"
+
+      * "value"
+
+    * chain
+
+      * "Account"
+
+        * "Account.__init__()"
+
+        * "Account.__non_callable_proto_members__"
+
+        * "Account.address"
+
+        * "Account.balance"
+
+        * "Account.emit_transfer()"
+
+      * "Event"
+
+        * "Event.__init__()"
+
+        * "Event.emit()"
+
+        * "Event.emit_raw()"
+
+        * "Event.indexed"
+
+        * "Event.name"
+
+        * "Event.signature"
+
+      * "IAccount"
+
+        * "IAccount.__init__()"
+
+        * "IAccount.__non_callable_proto_members__"
+
+        * "IAccount.address"
+
+        * "IAccount.balance"
+
+        * "IAccount.emit_transfer()"
+
+      * "id"
+
+    * vm
+
+      * "Return"
+
+        * "Return.__init__()"
+
+        * "Return.calldata"
+
+      * "UserError"
+
+        * "UserError.__init__()"
+
+        * "UserError.data"
+
+        * "UserError.immediate()"
+
+      * "VMError"
+
+        * "VMError.__init__()"
+
+        * "VMError.message"
+
+      * "run_nondet()"
+
+      * "run_nondet_unsafe()"
+
+      * "spawn_sandbox()"
+
+      * "trace()"
+
+      * "trace_time_micro()"
+
+      * "unpack_result()"
+
+    * evm
+
+      * "ContractDeclaration"
+
+        * "ContractDeclaration.View"
+
+        * "ContractDeclaration.Write"
+
+        * "ContractDeclaration.__init__()"
+
+      * "ContractProxy"
+
+        * "ContractProxy.__init__()"
+
+        * "ContractProxy.address"
+
+        * "ContractProxy.balance"
+
+        * "ContractProxy.emit()"
+
+        * "ContractProxy.emit_transfer()"
+
+        * "ContractProxy.view()"
+
+      * "InplaceTuple"
+
+      * "MethodEncoder"
+
+        * "MethodEncoder.__init__()"
+
+        * "MethodEncoder.decode_ret()"
+
+        * "MethodEncoder.encode_call()"
+
+      * "bytes1"
+
+      * "bytes10"
+
+      * "bytes11"
+
+      * "bytes12"
+
+      * "bytes13"
+
+      * "bytes14"
+
+      * "bytes15"
+
+      * "bytes16"
+
+      * "bytes17"
+
+      * "bytes18"
+
+      * "bytes19"
+
+      * "bytes2"
+
+      * "bytes20"
+
+      * "bytes21"
+
+      * "bytes22"
+
+      * "bytes23"
+
+      * "bytes24"
+
+      * "bytes25"
+
+      * "bytes26"
+
+      * "bytes27"
+
+      * "bytes28"
+
+      * "bytes29"
+
+      * "bytes3"
+
+      * "bytes30"
+
+      * "bytes31"
+
+      * "bytes32"
+
+      * "bytes4"
+
+      * "bytes5"
+
+      * "bytes6"
+
+      * "bytes7"
+
+      * "bytes8"
+
+      * "bytes9"
+
+      * "decode()"
+
+      * "encode()"
+
+      * "selector_of()"
+
+      * "signature_of()"
+
+      * "type_name_of()"
+
+    * nondet
+
+      * "Image"
+
+        * "Image.__init__()"
+
+        * "Image.pil"
+
+        * "Image.raw"
+
+      * "exec_prompt()"
+
+    * nondet.web
+
+      * "Response"
+
+        * "Response.__eq__()"
+
+        * "Response.__hash__"
+
+        * "Response.__init__()"
+
+        * "Response.__repr__()"
+
+        * "Response.body"
+
+        * "Response.headers"
+
+        * "Response.status"
+
+      * "delete()"
+
+      * "get()"
+
+      * "head()"
+
+      * "patch()"
+
+      * "post()"
+
+      * "render()"
+
+      * "request()"
+
+    * eq_principle
+
+      * "prompt_comparative()"
+
+      * "prompt_non_comparative()"
+
+      * "strict_eq()"
+
+    * calldata
+
+      * "CalldataEncodable"
+
+        * "CalldataEncodable.__to_calldata__()"
+
+      * "DecodingError"
+
+        * "DecodingError.__cause__"
+
+        * "DecodingError.__context__"
+
+        * "DecodingError.__getattribute__()"
+
+        * "DecodingError.__init__()"
+
+        * "DecodingError.__new__()"
+
+        * "DecodingError.__reduce__()"
+
+        * "DecodingError.__repr__()"
+
+        * "DecodingError.__setstate__()"
+
+        * "DecodingError.__str__()"
+
+        * "DecodingError.__suppress_context__"
+
+        * "DecodingError.__traceback__"
+
+        * "DecodingError.add_note()"
+
+        * "DecodingError.args"
+
+        * "DecodingError.with_traceback()"
+
+      * "decode()"
+
+      * "encode()"
+
+      * "to_str()"
+
+    * storage
+
+      * "Array"
+
+        * "Array.__init__()"
+
+      * "Comparable"
+
+        * "Comparable.__init__()"
+
+      * "DynArray"
+
+        * "DynArray.__init__()"
+
+        * "DynArray.append()"
+
+        * "DynArray.append_new_get()"
+
+        * "DynArray.assign()"
+
+        * "DynArray.clear()"
+
+        * "DynArray.insert()"
+
+        * "DynArray.pop()"
+
+      * "Indirection"
+
+        * "Indirection.__init__()"
+
+        * "Indirection.get()"
+
+        * "Indirection.set()"
+
+        * "Indirection.slot()"
+
+      * "Manager"
+
+        * "Manager.do_read()"
+
+        * "Manager.do_write()"
+
+        * "Manager.get_store_slot()"
+
+      * "Pickled"
+
+        * "Pickled.load()"
+
+        * "Pickled.store()"
+
+      * "Root"
+
+        * "Root.MANAGER"
+
+        * "Root.__init__()"
+
+        * "Root.code"
+
+        * "Root.contract_instance"
+
+        * "Root.get()"
+
+        * "Root.get_contract_instance()"
+
+        * "Root.get_vacant_slot()"
+
+        * "Root.lock_default()"
+
+        * "Root.locked_slots"
+
+        * "Root.major"
+
+        * "Root.slot()"
+
+        * "Root.upgraders"
+
+      * "Slot"
+
+        * "Slot.__init__()"
+
+        * "Slot.as_int()"
+
+        * "Slot.id"
+
+        * "Slot.indirect()"
+
+        * "Slot.manager"
+
+        * "Slot.read()"
+
+        * "Slot.write()"
+
+      * "TreeMap"
+
+        * "TreeMap.assign()"
+
+        * "TreeMap.clear()"
+
+        * "TreeMap.compute_if_absent()"
+
+        * "TreeMap.get()"
+
+        * "TreeMap.get_or_insert_default()"
+
+        * "TreeMap.items()"
+
+      * "VLA"
+
+        * "VLA.append()"
+
+        * "VLA.assign()"
+
+        * "VLA.data_offset()"
+
+        * "VLA.extend()"
+
+        * "VLA.set_length()"
+
+        * "VLA.slot()"
+
+        * "VLA.truncate()"
+
+      * "allow()"
+
+      * "inmem_allocate()"
+
+    * types
+
+      * "Address"
+
+        * "Address.SIZE"
+
+        * "Address.ZERO"
+
+        * "Address.__init__()"
+
+        * "Address.as_b64"
+
+        * "Address.as_bytes"
+
+        * "Address.as_hex"
+
+        * "Address.as_int"
+
+      * "Keccak256()"
+
+      * "KeccakHash"
+
+        * "KeccakHash.__init__()"
+
+        * "KeccakHash.block_size"
+
+        * "KeccakHash.copy()"
+
+        * "KeccakHash.digest()"
+
+        * "KeccakHash.digest_size"
+
+        * "KeccakHash.hexdigest()"
+
+        * "KeccakHash.preset()"
+
+        * "KeccakHash.sponge"
+
+        * "KeccakHash.update()"
+
+      * "Lazy"
+
+        * "Lazy.__init__()"
+
+        * "Lazy.get()"
+
+      * "SizedArray"
+
+        * "SizedArray.__init__()"
+
+      * "bigint"
+
+      * "i104"
+
+      * "i112"
+
+      * "i120"
+
+      * "i128"
+
+      * "i136"
+
+      * "i144"
+
+      * "i152"
+
+      * "i16"
+
+      * "i160"
+
+      * "i168"
+
+      * "i176"
+
+      * "i184"
+
+      * "i192"
+
+      * "i200"
+
+      * "i208"
+
+      * "i216"
+
+      * "i224"
+
+      * "i232"
+
+      * "i24"
+
+      * "i240"
+
+      * "i248"
+
+      * "i256"
+
+      * "i32"
+
+      * "i40"
+
+      * "i48"
+
+      * "i56"
+
+      * "i64"
+
+      * "i72"
+
+      * "i8"
+
+      * "i80"
+
+      * "i88"
+
+      * "i96"
+
+      * "u104"
+
+      * "u112"
+
+      * "u120"
+
+      * "u128"
+
+      * "u136"
+
+      * "u144"
+
+      * "u152"
+
+      * "u16"
+
+      * "u160"
+
+      * "u168"
+
+      * "u176"
+
+      * "u184"
+
+      * "u192"
+
+      * "u200"
+
+      * "u208"
+
+      * "u216"
+
+      * "u224"
+
+      * "u232"
+
+      * "u24"
+
+      * "u240"
+
+      * "u248"
+
+      * "u256"
+
+      * "u32"
+
+      * "u40"
+
+      * "u48"
+
+      * "u56"
+
+      * "u64"
+
+      * "u72"
+
+      * "u8"
+
+      * "u80"
+
+      * "u88"
+
+      * "u96"
+
+  * Package genlayer_embeddings
+
+    * "Distance"
+
+      * "Distance.__call__()"
+
+      * "Distance.__init__()"
+
+    * "EuclideanDistanceSquared"
+
+      * "EuclideanDistanceSquared.__call__()"
+
+      * "EuclideanDistanceSquared.__gl_allow_storage__"
+
+      * "EuclideanDistanceSquared.__init__()"
+
+      * "EuclideanDistanceSquared.batch()"
+
+    * "SentenceTransformer()"
+
+    * "SentenceTransformerFromPath()"
+
+    * "VecDB"
+
+      * "VecDB.Element"
+
+      * "VecDB.Id"
+
+      * "VecDB.__gl_allow_storage__"
+
+      * "VecDB.__init__()"
+
+      * "VecDB.__iter__()"
+
+      * "VecDB.__len__()"
+
+      * "VecDB.get_by_id()"
+
+      * "VecDB.get_by_id_or_none()"
+
+      * "VecDB.insert()"
+
+      * "VecDB.knn()"
+
+    * "get_model()"
+
+* Runners
+
+  * Using Runners
+
+* Guides
+
+  * Startup Process
+
+    * Bootloader Module
+
+      * Entry Points
+
+        * MAIN
+
+        * SANDBOX
+
+        * CONSENSUS_STAGE
+
+      * Method Resolution
+
+      * Error Handling
+
+      * Profiling Support
+
+      * Storage Integration
+
+  * Floating Point in Python API
+
+    * Non-Deterministic Mode
+
+    * Deterministic Mode
+
+* Changelog
+
+  * v0.2.5
+
+  * v0.2.4
+
+  * v0.2.1
+
+  * v0.1.8-runner-hash___
+
+    * Breaking Changes
+
+    * New Features
+
+    * API Improvements
+
+  * v0.1.3
+
+    * Migration Guide
+
+      * Contract Interfaces
+
+      * Error handling
+
+      * VM operations
+
+      * EVM contracts
+
+      * Non-deterministic functions
+
+      * Equivalence principles
+
+    * Breaking Changes
+
+    * New Features
+
+    * API Improvements
+
+  * v0.1.0
+
+
+### introduction.txt
+
+Introduction
+************
+
+The "genlayer" package provides the Python SDK for writing intelligent
+contracts that run inside GenVM. It includes storage primitives,
+contract interfaces, non-deterministic operations, equivalence
+principles, and EVM interoperability -- everything needed to build
+contracts in Python.
+
+Under the hood, Python code executes via CPython compiled to
+WebAssembly as a "runner" inside GenVM. The SDK abstracts the VM
+interface so contract authors can write idiomatic Python while GenVM
+handles deterministic execution and consensus.
+
+For tutorials and getting started, see the main documentation.
+
+
+### reference/genlayer.txt
+
+Package genlayer
+****************
+
+
+Top level
+=========
+
+GenLayer Python Standard Library
+
+The recommended import pattern is:
+
+   import genlayer as gl
+
+This provides access to:
+
+* Type aliases: "gl.u8", "gl.u16", ..., "gl.u256", "gl.Address", etc.
+
+* Storage types: "gl.TreeMap", "gl.DynArray", "gl.Array"
+
+* Contract declaration via "gl.contract.Contract"
+
+* Contract interaction via "gl.contract.interface",
+  "gl.contract.deploy", "gl.contract.get_at"
+
+* Message context via "gl.message.contract_address",
+  "gl.message.sender_address", etc.
+
+* VM operations via "gl.vm"
+
+* Non-deterministic operations via "gl.nondet"
+
+* Equivalence principles via "gl.eq_principle"
+
+* EVM interaction via "gl.evm"
+
+* Method decorators via "gl.public" and "gl.private"
+
+class genlayer.Address
+
+   Bases: "object"
+
+   Represents GenLayer Address
+
+   SIZE: Final[int] = 20
+
+      Constant that represents size of a Genlayer address
+
+   ZERO: ClassVar[Address] = Address("0x0000000000000000000000000000000000000000")
+
+      The zero address (0x0000000000000000000000000000000000000000)
+
+   __eq__(r)
+
+      Return self==value.
+
+   __format__(fmt: Literal['s', 'x', 'b64', 'cd', '']) -> str
+
+      Default object formatter.
+
+      Return str(self) if format_spec is empty. Raise TypeError
+      otherwise.
+
+      Return type:
+         str
+
+   __ge__(r)
+
+      Return self>=value.
+
+   __gt__(r)
+
+      Return self>value.
+
+   __hash__()
+
+      Return hash(self).
+
+   __init__(val: str | Buffer | Address)
+
+      Parameters:
+         **val** (*str** | **Buffer** | **Address*) -- either a hex
+         encoded address (that starts with '0x'), or base64 encoded
+         address, or buffer of 20 bytes
+
+      Warning:
+
+        checksum validation is not performed
+
+   __le__(r)
+
+      Return self<=value.
+
+   __lt__(r)
+
+      Return self<value.
+
+   __repr__() -> str
+
+      Return repr(self).
+
+      Return type:
+         str
+
+   __str__() -> str
+
+      Return str(self).
+
+      Return type:
+         str
+
+   property as_b64: str
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_b64
+      'WzjaanAcVoVF3PywP8uHX1a+3cQ='
+
+      Returns:
+         base64 representation of an address (most compact string)
+
+   property as_bytes: bytes
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_bytes
+      b'[8\xdajp\x1cV\x85E\xdc\xfc\xb0?\xcb\x87_V\xbe\xdd\xc4'
+
+      Returns:
+         raw bytes of an address (most compact representation)
+
+   property as_hex: str
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_hex
+      '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4'
+
+      Returns:
+         checksum string representation
+
+   property as_int: Annotated[int, StaticIntMeta(size=20, signed=False)]
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_int
+      1123907236495940146162314350759402901750813440091
+      >>> hex(Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_int)
+      '0xc4ddbe565f87cb3fb0fcdc4585561c706ada385b'
+
+      Returns:
+         int representation of an address (unsigned little endian)
+
+class genlayer.Array
+
+   Bases: "Sequence", "SizedArray", "Generic"
+
+   Constantly sized array that can be persisted on the blockchain
+
+   __contains__(value)
+
+   __getitem__(idx: SupportsIndex | slice) -> T | Array
+
+      Get element by index or a view over a sub-range by slice.
+
+      Parameters:
+         **idx** (*SupportsIndex** | **slice*) -- integer index or
+         slice (step must be 1)
+
+      Returns:
+         single element for int index, "Array" view for slice
+
+      Raises:
+         * **IndexError** -- when integer index is out of range
+
+         * **KeyError** -- when slice step is not 1
+
+      Return type:
+         T | *Array*
+
+   __init__()
+
+      This class can't be created with "Array()"
+
+      Raises:
+         **TypeError** -- always
+
+   __iter__()
+
+   __len__() -> int
+
+      Return type:
+         int
+
+   __non_callable_proto_members__ = {}
+
+   __setitem__(idx: int, val: T) -> None
+
+      Set element at the given index.
+
+      Parameters:
+         * **idx** (*int*) -- integer index (supports negative
+           indexing)
+
+         * **val** (*T*) -- value to set
+
+      Raises:
+         **IndexError** -- when index is out of range
+
+   count(value) -> integer -- return number of occurrences of value
+
+   index(value[, start[, stop]]) -> integer -- return first index of value.
+
+      Raises ValueError if the value is not present.
+
+      Supporting start and stop arguments is optional, but
+      recommended.
+
+class genlayer.DynArray
+
+   Bases: "MutableSequence", "Generic"
+
+   Represents exponentially growing array ("list" in python terms)
+   that can be persisted on the blockchain
+
+   __contains__(value)
+
+   __delitem__(idx: int | slice) -> None
+
+      Delete element by index or range by slice.
+
+      Parameters:
+         **idx** (*int** | **slice*) -- integer index or slice
+
+      Raises:
+         **IndexError** -- when integer index is out of range
+
+   __getitem__(idx: int | slice) -> T | list[T]
+
+      Get element by index or sublist by slice.
+
+      Parameters:
+         **idx** (*int** | **slice*) -- integer index or slice
+
+      Returns:
+         single element for int index, list of elements for slice
+
+      Raises:
+         **IndexError** -- when integer index is out of range
+
+      Return type:
+         T | list[T]
+
+   __iadd__(values)
+
+   __init__()
+
+      This class can't be created with "DynArray()"
+
+      Raises:
+         **TypeError** -- always
+
+   __iter__() -> Any
+
+      Return type:
+         *Any*
+
+   __len__() -> int
+
+      Return type:
+         int
+
+   __repr__() -> str
+
+      Return repr(self).
+
+      Return type:
+         str
+
+   __setitem__(idx: SupportsIndex | slice, val: T | Sequence) -> None
+
+      Set element by index or replace a range by slice.
+
+      Parameters:
+         * **idx** (*SupportsIndex** | **slice*) -- integer index or
+           slice
+
+         * **val** (*T** | **Sequence*) -- value or sequence of values
+           to assign
+
+      Raises:
+         **IndexError** -- when integer index is out of range
+
+   append(value: T, /) -> None
+
+      Append value to the end of the array.
+
+      Parameters:
+         **value** (*T*) -- value to append
+
+   append_new_get() -> T
+
+      Grow the array by one and return a reference to the new
+      (uninitialized) element.
+
+      Returns:
+         reference to the newly appended element
+
+      Return type:
+         T
+
+   assign(arr: Sequence, /) -> Self
+
+      Same as "self[:] = arr" but more efficient
+
+      Exception safety: On error list becomes empty
+
+      Return type:
+         *Self*
+
+   clear() -> None
+
+      Remove all elements from the array.
+
+   count(value) -> integer -- return number of occurrences of value
+
+   extend(values)
+
+      S.extend(iterable) -- extend sequence by appending elements from
+      the iterable
+
+   index(value[, start[, stop]]) -> integer -- return first index of value.
+
+      Raises ValueError if the value is not present.
+
+      Supporting start and stop arguments is optional, but
+      recommended.
+
+   insert(index: int, value: T, /) -> None
+
+      Insert value before the given index.
+
+      Parameters:
+         * **index** (*int*) -- position to insert at
+
+         * **value** (*T*) -- value to insert
+
+      Raises:
+         **IndexError** -- when index is out of range
+
+   pop() -> None
+
+      Remove the last element.
+
+      Raises:
+         **Exception** -- when the array is empty
+
+   remove(value)
+
+      S.remove(value) -- remove first occurrence of value. Raise
+      ValueError if the value is not present.
+
+   reverse()
+
+      S.reverse() -- reverse *IN PLACE*
+
+genlayer.Keccak256(initial_input: Buffer | None = None)
+
+class genlayer.Lazy
+
+   Bases: "Generic"
+
+   Base class to support lazy evaluation
+
+   __init__(_eval: Callable[[], T])
+
+   get() -> T
+
+      Performs evaluation if necessary (only ones) and stores the
+      result
+
+      Returns:
+         result of evaluating
+
+      Raises:
+         *iff* evaluation raised, this outcome is also cached, so
+         subsequent calls will raise same exception
+
+      Return type:
+         T
+
+class genlayer.SizedArray
+
+   Bases: "Protocol", "Generic"
+
+   __getitem__(index: SupportsIndex, /) -> T
+
+      Return type:
+         T
+
+   __init__(*args, **kwargs)
+
+   __iter__() -> Iterator
+
+      Return type:
+         *Iterator*
+
+   __len__() -> int
+
+      Return type:
+         int
+
+   __non_callable_proto_members__ = {}
+
+class genlayer.TreeMap
+
+   Bases: "MutableMapping", "Generic"
+
+   Represents a mapping from keys to values that can be persisted on
+   the blockchain
+
+   Tparam K:
+      must implement "genlayer.storage.tree_map.Comparable" protocol
+      ("<" is needed) and be storage-allowed
+
+   Tparam V:
+      must be storage-allowed
+
+   __contains__(k: object) -> bool
+
+      Return type:
+         bool
+
+   __delitem__(k: K)
+
+      Remove the entry with the given key.
+
+      Parameters:
+         **k** (*K*) -- key to remove
+
+      Raises:
+         **KeyError** -- when key is not found
+
+   __eq__(other)
+
+      Return self==value.
+
+   __getitem__(k: K) -> V
+
+      Return value for the given key.
+
+      Parameters:
+         **k** (*K*) -- key to look up
+
+      Returns:
+         value associated with the key
+
+      Raises:
+         **KeyError** -- when key is not found
+
+      Return type:
+         V
+
+   __gl_allow_storage__ = True
+
+   __hash__ = None
+
+   __iter__()
+
+   __len__() -> int
+
+      Return type:
+         int
+
+   __repr__() -> str
+
+      Return repr(self).
+
+      Return type:
+         str
+
+   __setitem__(k: K, v: V)
+
+      Set value for the given key, inserting if absent.
+
+      Parameters:
+         * **k** (*K*) -- key
+
+         * **v** (*V*) -- value to associate with the key
+
+   assign(arr: Mapping, /) -> Self
+
+      Clear the map and populate it from the given mapping.
+
+      Parameters:
+         **arr** (*Mapping*) -- mapping to copy entries from
+
+      Returns:
+         self
+
+      Return type:
+         *Self*
+
+   clear()
+
+      Remove all entries from the map.
+
+   compute_if_absent(k: K, supplier: Callable[[], V], /) -> V
+
+      Returns:
+         Value associated with *k* if it is present, otherwise get's
+         new value from the supplier, stores it at *k* and returns
+
+      Return type:
+         V
+
+   get(k: K, /, default=None)
+
+      Returns:
+         Value associated with *k* or *default* if there is no such
+         value
+
+   get_or_insert_default(k: K, /) -> V
+
+      Return value for key, inserting a default-initialized entry if
+      absent.
+
+      Parameters:
+         **k** (*K*) -- key to look up or insert
+
+      Returns:
+         value associated with the key
+
+      Return type:
+         V
+
+   items() -> ItemsView
+
+      Return a view of all (key, value) pairs in sorted order.
+
+      Returns:
+         items view
+
+      Return type:
+         *ItemsView*
+
+   keys() -> a set-like object providing a view on D's keys
+
+   pop(k[, d]) -> v, remove specified key and return the corresponding value.
+
+      If key is not found, d is returned if given, otherwise KeyError
+      is raised.
+
+   popitem() -> (k, v), remove and return some (key, value) pair
+
+      as a 2-tuple; but raise KeyError if D is empty.
+
+   setdefault(k[, d]) -> D.get(k,d), also set D[k]=d if k not in D
+
+   update([E, ]**F) -> None.  Update D from mapping/iterable E and F.
+
+      If E present and has a .keys() method, does:     for k in
+      E.keys(): D[k] = E[k] If E present and lacks .keys() method,
+      does:     for (k, v) in E: D[k] = v In either case, this is
+      followed by: for k, v in F.items(): D[k] = v
+
+   values() -> an object providing a view on D's values
+
+genlayer.private(f, /)
+
+   Decorator that marks method as private. As all methods are private
+   by default it does nothing.
+
+class genlayer.public
+
+   Bases: "object"
+
+   static view(f, /)
+
+      Decorator that marks a contract method as a public view
+
+   write = <genlayer._internal.annotations._write object>
+
+      Decorator that marks a contract method as a public write. Has
+      *.payable*
+
+         @gl.public.write
+         def foo(self) -> None: ...
+
+         @gl.public.write.payable
+         def bar(self) -> None: ...
+
+         @gl.public.write.min_gas(leader=100, validator=20).payable
+         def bar(self) -> None: ...
+
+      Return type:
+         T
+
+
+Integer aliases
+---------------
+
+It also has aliases for signed and unsigned integer types (such as
+"u256") and a "bigint" alias that can be used in storage unlike
+regular "int"
+
+
+contract
+========
+
+Contract interaction and declaration module.
+
+This module provides functionality for: - Declaring main contracts
+with the "Contract" base class - Creating type-safe interfaces with
+"@interface" - Deploying contracts with "deploy" - Getting contract
+proxies with "get_at"
+
+class genlayer.contract.Contract
+
+   Bases: "IAccount"
+
+   Class for declaring main GenVM contract.
+
+   This class must be inherited by user contracts to be deployable on
+   GenVM. It provides essential contract functionality including
+   balance access, address information, and storage proxying.
+
+   Only one "Contract" subclass is allowed per module. The class
+   automatically generates storage management code and registers
+   itself as the main contract.
+
+   Example:
+      >>> import genlayer.gl as gl
+      >>>
+      >>> class MyContract(gl.Contract):
+      >>>     def __init__(self, initial_value: int):
+      >>>         self.value = initial_value
+      >>>
+      >>>     @gl.public.view
+      >>>     def get_value(self) -> int:
+      >>>         return self.value
+      >>>
+      >>>     @gl.public.write
+      >>>     def set_value(self, new_value: int):
+      >>>         self.value = new_value
+
+   Warning:
+
+     Only one Contract subclass is allowed per Python module.
+     Attempting to define multiple Contract subclasses will raise a
+     TypeError.
+
+   property address: Address
+
+      Return the address of this account.
+
+   property balance: Annotated[int, StaticIntMeta(size=32, signed=False)]
+
+      Returns current balance of this account.
+
+   emit_transfer(value: u256, *, on: ON = 'finalized') -> None
+
+      Emit a transfer message to this account's address.
+
+      Parameters:
+         * **value** (*Annotated**[**int**,
+           **StaticIntMeta**(**size=32**, **signed=False**)**]*) --
+           amount to transfer
+
+         * **on** (*ON*) -- transaction stage at which the transfer is
+           applied
+
+class genlayer.contract.GenVMContractDeclaration
+
+   Bases: "Protocol", "Generic"
+
+   Protocol for defining contract interface declarations.
+
+   This protocol is used with the *@gl.contract.interface* decorator
+   to create type-safe interfaces for interacting with specific
+   contract types.
+
+   Parameters:
+      * **TView** -- Type containing view method declarations
+
+      * **TWrite** -- Type containing write method declarations
+
+   Example:
+      >>> @gl.contract.interface
+      >>> class MyContract:
+      >>>     class View:
+      >>>         def get_balance(self, user: Address) -> u256: ...
+      >>>         def get_name(self) -> str: ...
+      >>>
+      >>>     class Write:
+      >>>         def transfer(self, to: Address, amount: u256) -> None: ...
+      >>>         def mint(self, to: Address, amount: u256) -> None: ...
+
+   View: type[TView]
+
+      Class containing declarations for all view (read-only) methods.
+
+      All methods should be annotated with their expected return
+      types.
+
+   Write: type[TWrite]
+
+      Class containing declarations for all write (state-modifying)
+      methods.
+
+      All methods must have return type annotations of either None or
+      be omitted.
+
+   __init__(*args, **kwargs)
+
+class genlayer.contract.Proxy
+
+   Bases: "IAccount", "Protocol", "Generic"
+
+   Generic proxy interface for interacting with deployed GenVM
+   contracts.
+
+   This protocol defines the interface for contract proxies that
+   provide type-safe access to view methods and write operations on
+   deployed contracts.
+
+   Parameters:
+      * **TView** -- Type representing available view methods
+
+      * **TSend** -- Type representing available write methods
+
+   emit(*, value: u256 = 0, on: ON = 'finalized') -> TSend
+
+      Get a namespace for emitting write transactions.
+
+      Parameters:
+         * **value** (*Annotated**[**int**,
+           **StaticIntMeta**(**size=32**, **signed=False**)**]*) --
+           Amount of native tokens to transfer with the transaction
+
+         * **on** (*ON*) -- When the transaction message should be
+           emitted to consensus
+
+      Returns:
+         Object providing access to write methods
+
+      Return type:
+         TSend
+
+      Warning:
+
+        Emitting transactions, especially with value transfers on
+        "accepted" may lead to undesired results. Prefer to use
+        "finalized" (default)
+
+   emit_transfer(value: u256, *, on: ON = 'finalized') -> None
+
+      Emit a simple value transfer without calling any method.
+      Receiver may catch it with
+      py:func:*genlayer.gl.Contract.__receive__* method, so users may
+      need to supply non-zero gas
+
+      Parameters:
+         * **value** (*Annotated**[**int**,
+           **StaticIntMeta**(**size=32**, **signed=False**)**]*) --
+           Amount of native tokens to transfer
+
+         * **on** (*ON*) -- When transaction message should be emitted
+           to consensus
+
+      Raises:
+         **ValueError** -- If value is zero
+
+   view(*, state: StorageType = StorageType.LATEST_NON_FINAL) -> TView
+
+      Get a namespace for calling view methods.
+
+      Parameters:
+         **state** (*StorageType*) -- Storage state to query against
+
+      Returns:
+         Object providing access to view methods
+
+      Return type:
+         TView
+
+class genlayer.contract.StorageType
+
+   Bases: "IntEnum"
+
+   DEFAULT = 0
+
+   LATEST_FINAL = 1
+
+   LATEST_NON_FINAL = 2
+
+   __new__(value)
+
+genlayer.contract.deploy(*, code: bytes, args: Sequence[Encodable] = [], kwargs: Mapping[str, Encodable] = {}, salt_nonce: Literal[0] = 0, value: Annotated[int, StaticIntMeta(size=32, signed=False)] = 0, on: ON = 'finalized') -> None
+genlayer.contract.deploy(*, code: bytes, args: Sequence[Encodable] = [], kwargs: Mapping[str, Encodable] = {}, salt_nonce: Annotated[int, StaticIntMeta(size=32, signed=False)], value: Annotated[int, StaticIntMeta(size=32, signed=False)], on: ON = 'finalized') -> Address
+
+   Deploy a new GenVM contract to the blockchain.
+
+   This function deploys a new contract using the provided "code" and
+   constructor arguments. The deployment address can be deterministic
+   (with a salt) or non-deterministic.
+
+   Parameters:
+      * **code** -- Source code of the contract to deploy. It can be
+        regular Python code. See Runners for more information
+
+      * **args** -- Positional arguments for the contract constructor
+
+      * **kwargs** -- Keyword arguments for the contract constructor
+
+      * **salt_nonce** -- Salt for deterministic deployment. Use 0 for
+        non-deterministic.
+
+      * **value** -- Amount of native tokens to send to the contract
+        during deployment
+
+      * **on** -- When to execute the deployment ('accepted' or
+        'finalized')
+
+   Returns:
+      Contract address if salt_nonce != 0, None otherwise
+
+   Example:
+      >>> # Non-deterministic deployment
+      >>> deploy(
+      >>>     code=contract_source_str.encode('utf-8'),
+      >>>     args=[initial_supply],
+      >>>     kwargs={"name": "MyToken", "symbol": "MTK"}
+      >>> )
+      >>>
+      >>> # Deterministic deployment
+      >>> address = deploy(
+      >>>     code=contract_source_zip_as_bytes,
+      >>>     args=[initial_supply],
+      >>>     salt_nonce=12345,
+      >>>     value=1000  # Send 1000 native tokens
+      >>> )
+      >>> print(f'Contract deployed at: {address}')
+
+   Note:
+
+     * For deterministic deployments (salt_nonce != 0), the contract
+       address
+          is computed using CREATE2 and is returned immediately
+
+     * For non-deterministic deployments (salt_nonce == 0), the
+       address is
+          assigned by the consensus and not returned. Considering
+          asynchronous nature of GenLayer consensus the address should
+          not be predicted
+
+     * The contract's constructor will be called with the provided
+       "args" and "kwargs"
+
+     * Refer to consensus documentation for CREATE2 address derivation
+       process and
+          details about transaction ordering
+
+genlayer.contract.get_at(address: Address, /) -> Proxy
+
+   Create a proxy object for interacting with a deployed GenVM
+   contract.
+
+   This function returns a contract proxy that provides runtime access
+   to the methods of a deployed contract without requiring type
+   annotations describing its interface.
+
+   Parameters:
+      **address** (*Address*) -- Address of the deployed contract
+
+   Returns:
+      ContractProxy object for interacting with the contract
+
+   Return type:
+      *Proxy*
+
+   Example:
+      >>> addr = Address('0x1234567890abcdef...')
+      >>> contract = get_contract_at(addr)
+      >>> result = contract.view().some_view_method(arg1, arg2)
+      >>> contract.emit(value=100).some_write_method(arg1)
+
+genlayer.contract.interface(_declaration: GenVMContractDeclaration, /) -> Callable[[Address], Proxy]
+
+   Decorator for creating type-safe contract interfaces.
+
+   This decorator creates a factory function that returns strongly-
+   typed contract proxies, enabling IDE autocompletion and static type
+   checking for contract interactions.
+
+   Parameters:
+      **_contr** -- Contract declaration class with View and Write
+      nested classes
+
+   Returns:
+      Factory function that creates typed contract proxies
+
+   Return type:
+      *Callable*[[*Address*], *Proxy*]
+
+   Example:
+      >>> @gl.contract.interface
+      >>> class ERC20Contract:
+      >>>     class View:
+      >>>         def balance_of(self, owner: Address) -> u256: ...
+      >>>         def total_supply(self) -> u256: ...
+      >>>
+      >>>     class Write:
+      >>>         def transfer(self, to: Address, amount: u256) -> None: ...
+      >>>         def approve(self, spender: Address, amount: u256) -> None: ...
+      >>>
+      >>> # Usage:
+      >>> token = ERC20Contract(token_address)
+      >>> balance = token.view().balance_of(user_address)  # Fully typed!
+      >>> token.emit().transfer(recipient, amount)
+
+   Note:
+
+     This decorator provides no runtime functionality - it's purely
+     for type safety and developer experience. The actual contract
+     interaction uses the same runtime mechanisms as *get_at*.
+
+
+message
+=======
+
+class genlayer.message.MessageRawType
+
+   Bases: "TypedDict"
+
+   chain_id: Annotated[int, StaticIntMeta(size=32, signed=False)]
+
+      Current chain ID
+
+   contract_address: Address
+
+      Address of current Intelligent Contract
+
+   datetime: str
+
+      Transaction datetime. For "#get-schema" it can be some
+      predefined datetime
+
+   entry_data: bytes
+
+   entry_kind: int
+
+      One of:
+         * "0" for "MAIN"
+
+         * "1" for "SANDBOX"
+
+         * "2" for "CONSENSUS_STAGE"
+
+      See Startup Process for more details.
+
+   entry_stage_data: Decoded
+
+   is_init: bool
+
+      "True" *iff* it is a deployment
+
+   origin_address: Address
+
+      Entire transaction initiator
+
+   sender_address: Address
+
+      Address of this call initiator
+
+   stack: list[Address]
+
+      Stack of view method calls, excluding last ("contract_address")
+
+   value: Annotated[int, StaticIntMeta(size=32, signed=False)]
+
+genlayer.message.chain_id: Annotated[int, StaticIntMeta(size=32, signed=False)] = Ellipsis
+
+   Current chain ID
+
+genlayer.message.contract_address: Address = Ellipsis
+
+   Address of current Intelligent Contract
+
+genlayer.message.entry_data: bytes = Ellipsis
+
+   Raw entry data bytes from the VM message
+
+genlayer.message.entry_kind: int = Ellipsis
+
+   One of:
+
+   * "0" for "MAIN"
+
+   * "1" for "SANDBOX"
+
+   * "2" for "CONSENSUS_STAGE"
+
+   See Startup Process for more details.
+
+genlayer.message.entry_stage_data: Decoded = Ellipsis
+
+   Decoded stage data (leader non-deterministic blocks outputs or
+   "None")
+
+genlayer.message.is_init: bool = Ellipsis
+
+   "True" *iff* it is a deployment
+
+genlayer.message.origin_address: Address = Ellipsis
+
+   Entire transaction initiator
+
+genlayer.message.raw: MessageRawType = Ellipsis
+
+   The raw message dictionary as received from the VM
+
+genlayer.message.sender_address: Address = Ellipsis
+
+   Address of this call initiator
+
+genlayer.message.stack: list[Address] = Ellipsis
+
+   Stack of view method calls, excluding last ("contract_address")
+
+genlayer.message.value: Annotated[int, StaticIntMeta(size=32, signed=False)] = Ellipsis
+
+   Value sent with the transaction
+
+
+chain
+=====
+
+class genlayer.chain.Account
+
+   Bases: "IAccount"
+
+   Class for on-chain accounts.
+
+   __init__(address: Address, /)
+
+      Get account at given address.
+
+      Can be used to emit transfer messages to any address, even if
+      there is no contract deployed at it.
+
+      Parameters:
+         **address** (*Address*) -- target account address
+
+      Returns:
+         account instance for the given address
+
+   __non_callable_proto_members__ = {'address', 'balance'}
+
+   property address: Address
+
+      Return the address of this account.
+
+   property balance: Annotated[int, StaticIntMeta(size=32, signed=False)]
+
+      Return current balance of this account.
+
+   emit_transfer(value: u256, *, on: ON = 'finalized') -> None
+
+      Emit a transfer message to this account's address.
+
+      Parameters:
+         * **value** (*Annotated**[**int**,
+           **StaticIntMeta**(**size=32**, **signed=False**)**]*) --
+           amount to transfer
+
+         * **on** (*ON*) -- transaction stage at which the transfer is
+           applied
+
+class genlayer.chain.Event
+
+   Bases: "object"
+
+      class TransferOccurredEvent(gl.Event):
+        def __init__(self, sender: Address, to: Address, /): ...
+
+
+      class TransferOccurredEvent(gl.Event):
+        def __init__(self, sender: Address, to: Address, /, **blob): ...
+
+   __init__()
+
+      Base class cannot be instantiated directly, it is only used for
+      inheritance
+
+   emit() -> None
+
+      Emit this event.
+
+   static emit_raw(topics: list[bytes], blob: Encodable, /) -> None
+
+      Emit a raw event with the given topics and blob of data.
+
+      Parameters:
+         * **topics** (*list**[**bytes**]*) -- list of topic byte
+           strings (first is typically the event signature hash)
+
+         * **blob** (*Encodable*) -- calldata-encodable payload
+
+   indexed: tuple[str, ...]
+
+      tuple of indexed arguments name in **sorted** order
+
+   name: str
+
+      Event name. If not overridden it will be set to "__name__"
+
+   signature: str
+
+      Event signature (built-in/main topic). Consists of name and
+      indexed fields in parenthesis, **sorted**
+
+      Example: "TransferOccurredEvent(from,to)"
+
+class genlayer.chain.IAccount
+
+   Bases: "Protocol"
+
+   Protocol defining the interface for on-chain accounts. Be that a
+   contract or an EoA.
+
+   __init__(*args, **kwargs)
+
+   __non_callable_proto_members__ = {'address', 'balance'}
+
+   property address: Address
+
+      Return the address of this account.
+
+   property balance: Annotated[int, StaticIntMeta(size=32, signed=False)]
+
+      Returns current balance of this account.
+
+   emit_transfer(value: u256, *, on: ON = 'finalized') -> None
+
+      Emit a transfer message to this account's address.
+
+      Parameters:
+         * **value** (*Annotated**[**int**,
+           **StaticIntMeta**(**size=32**, **signed=False**)**]*) --
+           amount to transfer
+
+         * **on** (*ON*) -- transaction stage at which the transfer is
+           applied
+
+genlayer.chain.id: Annotated[int, StaticIntMeta(size=32, signed=False)] = Ellipsis
+
+   Chain ID. It is the same as in the message
+
+
+vm
+==
+
+Virtual Machine execution and sandbox module.
+
+This module provides: - Sandbox execution with "spawn_sandbox" - Non-
+deterministic execution with "run_nondet" and "run_nondet_unsafe" -
+Result types: "Return", "VMError", "UserError", "Result" - Event
+emission with "Event"
+
+class genlayer.vm.Return
+
+   Bases: "Generic"
+
+   Represents a successful return value from a VM operation.
+
+   __init__(calldata: T) -> None
+
+   calldata: T
+
+      Decoded return value from the VM execution
+
+exception genlayer.vm.UserError
+
+   Bases: "Exception"
+
+   Represents an error that user contract rose during execution of
+   their code in the VM.
+
+   __init__(data: Decoded, /)
+
+   data: Decoded
+
+      User-provided message. Be careful to use concise message, as by
+      default they are checked for strict equality by the validator
+
+   static immediate(reason: Encodable) -> NoReturn
+
+      Performs an immediate error, current VM won't be able to handle
+      it, stack unwind will not happen
+
+      Return type:
+         *NoReturn*
+
+class genlayer.vm.VMError
+
+   Bases: "object"
+
+   Represents an error that occurred within the VM during execution.
+
+   It indicates user-caused error, such as OOM.
+
+   __init__(message: str) -> None
+
+   message: str
+
+      Description of the VM error that occurred. It begins with code,
+      such as "exit_code"
+
+genlayer.vm.run_nondet(leader_fn: ~typing.Callable[[], T], validator_fn: ~typing.Callable[[Result], bool], /, *, compare_user_errors: ~typing.Callable[[~genlayer.vm.UserError, ~genlayer.vm.UserError], bool] = <function <lambda>>, compare_vm_errors: ~typing.Callable[[~genlayer.vm.VMError, ~genlayer.vm.VMError], bool] = <function <lambda>>) -> T
+
+   Executes a non-deterministic block with comprehensive error
+   handling.
+
+   This is the recommended API for custom non-deterministic execution.
+   It provides safer error handling compared to "run_nondet_unsafe()"
+   by running the validator in a sandbox and handling validator errors
+   with provided functions with sensible defaults.
+
+   Parameters:
+      * **leader_fn** (*Callable**[**[**]**, **T**]*) -- Function
+        executed by the leader node
+
+      * **validator_fn** (*Callable**[**[**Result**]**, **bool**]*) --
+        Function that validates the leader's result, is ran in a
+        sandbox
+
+      * **compare_user_errors** (*Callable**[**[**UserError**,
+        **UserError**]**, **bool**]*) -- Function to compare UserError
+        instances for equality
+
+      * **compare_vm_errors** (*Callable**[**[**VMError**,
+        **VMError**]**, **bool**]*) -- Function to compare VMError
+        instances for equality
+
+   Returns:
+      The result from the leader if validation passes
+
+   Return type:
+      T
+
+   Error handling: - If leader and validator both succeed: returns
+   leader result - If leader fails and validator agrees: propagates
+   leader error - If results don't match: consensus fails
+
+   Example:
+      >>> def leader() -> list[int]:
+      ...   return fetch_external_data()
+      >>> def validator(result):
+      ...   if not isinstance(result, Return):
+      ...     return False
+      ...   my_data = leader()
+      ...   return numpy.linalg.norm(np.array(result.calldata) - np.array(my_data)) < 0.1
+      >>> value = run_nondet(leader, validator)
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+genlayer.vm.run_nondet_unsafe(leader_fn: Callable[[], T], validator_fn: Callable[[Result], bool], /) -> T
+
+   Executes a non-deterministic block with leader-validator consensus.
+
+   This is the most generic API for non-deterministic execution. The
+   leader function runs as is, validators one checks the result.
+
+   Parameters:
+      * **leader_fn** (*Callable**[**[**]**, **T**]*) -- Function
+        executed by the leader node (must be serializable)
+
+      * **validator_fn** (*Callable**[**[**Result**]**, **bool**]*) --
+        Function that validates the leader's result and returns bool
+
+   Returns:
+      The result from the leader (iff validation passes, otherwise VM
+      will be terminated)
+
+   Return type:
+      T
+
+   Warning:
+
+     This function does not use extra sandbox for catching validator
+     errors. Validator error will result in a "Disagree" error in
+     executor (same as if this function returned "False"). Use
+     "run_nondet()" instead if you want to catch and inspect
+     "validator_fn" errors, or use sandbox inside of it.
+
+   Note:
+
+     All sub-vm returns go through "genlayer.calldata" encoding.
+
+   Example:
+      >>> def leader():
+      ...   return os.urandom(1)[0] % 3
+      >>> def validator(result):
+      ...   return unpack_result(result) == 1  # agree in 33% of cases
+      >>> value = gl.vm.run_nondet_unsafe(leader, validator)
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+genlayer.vm.spawn_sandbox(fn: Callable[[], T], *, allow_write_ops: bool = False) -> Return | VMError | UserError
+
+   Runs a function in an isolated sandbox environment.
+
+   The function is executed in a separate VM instance with controlled
+   permissions. This provides isolation and security for potentially
+   unsafe operations. Determinism of spawned VM matches the
+   determinism of the current VM.
+
+   Parameters:
+      * **fn** (*Callable**[**[**]**, **T**]*) -- Function to execute
+        in the sandbox (must be serializable with cloudpickle)
+
+      * **allow_write_ops** (*bool*) -- Whether to allow write
+        operations in the sandbox. Only effective if current VM has
+        corresponding permission
+
+   Return type:
+      *Return* | *VMError* | *UserError*
+
+   Example:
+      >>> result = spawn_sandbox(lambda: risky_computation())
+      >>> safe_value = unpack_result(result)
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+genlayer.vm.trace(*objs: Any, sep: str = ' ')
+
+genlayer.vm.trace_time_micro() -> int
+
+   Return type:
+      int
+
+genlayer.vm.unpack_result(res: Result, /) -> T
+
+   Extracts the successful result from a VM operation result.
+
+   Parameters:
+      **res** (*Result*) -- The result from a VM operation
+
+   Returns:
+      The actual return value if successful
+
+   Raises:
+      * **UserError** -- If the result represents a user error
+
+      * **UserError** -- If the result represents a "VMError"
+        (rewrapped as user error)
+
+   Return type:
+      T
+
+   Example:
+      >>> result = gl.vm.spawn_sandbox(lambda: 42)
+      >>> value = unpack_result(result)  # Returns 42 or raises on error
+
+
+evm
+===
+
+EVM (Ethereum Virtual Machine) contract interaction module.
+
+This module provides functionality for interacting with EVM-compatible
+contracts: - "contract_interface": Decorator for creating type-safe
+EVM contract interfaces - ABI encoding/decoding utilities - Fixed-size
+byte types (bytes1 through bytes32)
+
+class genlayer.evm.ContractDeclaration
+
+   Bases: "Protocol", "Generic"
+
+   Interface for declaring interfaces of external contracts
+
+   View: type[TView]
+
+   Write: type[TWrite]
+
+   __init__(*args, **kwargs)
+
+class genlayer.evm.ContractProxy
+
+   Bases: "Generic"
+
+   __init__(address: Address, view_impl: Callable[[ContractProxy], TView], balance_impl: Callable[[ContractProxy], u256], send_impl: Callable[[ContractProxy, TransactionDataKwArgs], TWrite], transfer_impl: Callable[[ContractProxy, TransactionDataKwArgs], None])
+
+   address: Address
+
+   property balance: Annotated[int, StaticIntMeta(size=32, signed=False)]
+
+   emit(*, value: u256 = 0) -> TWrite
+
+      Return type:
+         TWrite
+
+   emit_transfer(*, value: u256 = 0) -> None
+
+   view() -> TView
+
+      Return type:
+         TView
+
+class genlayer.evm.InplaceTuple
+
+   Bases: "object"
+
+   This class indicates that tuple should be encoded/decoded in-place.
+   Which means that even if it is dynamically sized, it is ignored. It
+   is useful for encoding/decoding arguments and returns
+
+      tuple[InplaceTuple, str, u256]
+
+class genlayer.evm.MethodEncoder
+
+   Bases: "object"
+
+   __init__(name: str, params: tuple[Any, ...], ret: type)
+
+   decode_ret(data: Buffer, /) -> Any
+
+      Return type:
+         *Any*
+
+   encode_call(args: tuple[Any, ...], /) -> bytes
+
+      Return type:
+         bytes
+
+class genlayer.evm.bytes1
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes10
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes11
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes12
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes13
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes14
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes15
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes16
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes17
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes18
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes19
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes2
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes20
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes21
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes22
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes23
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes24
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes25
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes26
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes27
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes28
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes29
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes3
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes30
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes31
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes32
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes4
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes5
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes6
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes7
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes8
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+class genlayer.evm.bytes9
+
+   Fixed-size byte array. These types are used for encoding/decoding
+   fixed-size byte arrays in EVM contracts
+
+   alias of "bytes"
+
+genlayer.evm.decode(expected: Type, encoded: Buffer, /) -> T
+
+   Return type:
+      T
+
+genlayer.evm.encode(params: Type, args: T, /) -> bytes
+
+   Return type:
+      bytes
+
+genlayer.evm.selector_of(name: str, params: Type[tuple[Unpack[T]]], /) -> bytes
+
+   Return type:
+      bytes
+
+genlayer.evm.signature_of(name: str, params: Type[tuple[Unpack[T]]], /) -> str
+
+   calculates signature that is used for making method selector
+
+   Return type:
+      str
+
+genlayer.evm.type_name_of(t: type, /) -> str
+
+   Return type:
+      str
+
+
+nondet
+======
+
+Non-deterministic operations module.
+
+This module provides APIs for operations that may produce different
+results across different nodes, such as: - "exec_prompt": Execute LLM
+prompts - "web": Web interaction functionality - "Image": Image
+dataclass for multimodal prompts
+
+class genlayer.nondet.Image
+
+   Bases: "object"
+
+   Image(raw: bytes, pil: 'PIL.Image.Image')
+
+   __init__(raw: bytes, pil: PIL.Image.Image) -> None
+
+   pil: PIL.Image.Image
+
+   raw: bytes
+
+genlayer.nondet.exec_prompt(prompt: str, *, images: collections.abc.Sequence[bytes | Image] | None = None) -> str
+genlayer.nondet.exec_prompt(prompt: str, *, response_format: Literal['text'], images: collections.abc.Sequence[bytes | Image] | None = None) -> str
+genlayer.nondet.exec_prompt(prompt: str, *, response_format: Literal['json'], image: bytes | Image | None = None) -> dict[str, Any]
+
+   API to execute a prompt (perform NLP)
+
+   Parameters:
+      * **prompt** ("str") -- prompt itself
+
+      * ****config** ("ExecPromptKwArgs") -- configuration
+
+   Return type:
+      "str"
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+
+nondet.web
+==========
+
+class genlayer.nondet.web.Response
+
+   Bases: "object"
+
+   Response(status: int, headers: dict[str, bytes], body: bytes |
+   None)
+
+   __eq__(other)
+
+      Return self==value.
+
+   __hash__ = None
+
+   __init__(status: int, headers: dict[str, bytes], body: bytes | None) -> None
+
+   __repr__()
+
+      Return repr(self).
+
+   body: bytes | None
+
+   headers: dict[str, bytes]
+
+   status: int
+
+genlayer.nondet.web.delete(url: str, /, *, body: str | bytes | None = None, headers: dict[str, str | bytes] = {}, sign: bool = False) -> Response
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+   Return type:
+      *Response*
+
+genlayer.nondet.web.get(url: str, /, *, headers: dict[str, str | bytes] = {}, sign: bool = False) -> Response
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+   Return type:
+      *Response*
+
+genlayer.nondet.web.head(url: str, /, *, body: str | bytes | None = None, headers: dict[str, str | bytes] = {}, sign: bool = False) -> Response
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+   Return type:
+      *Response*
+
+genlayer.nondet.web.patch(url: str, /, *, body: str | bytes | None = None, headers: dict[str, str | bytes] = {}, sign: bool = False) -> Response
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+   Return type:
+      *Response*
+
+genlayer.nondet.web.post(url: str, /, *, body: str | bytes | None = None, headers: dict[str, str | bytes] = {}, sign: bool = False) -> Response
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+   Return type:
+      *Response*
+
+genlayer.nondet.web.render(url: str, /, *, wait_after_loaded: str | None = None, mode: Literal['text', 'html']) -> str
+genlayer.nondet.web.render(url: str, *, wait_after_loaded: str | None = None, mode: Literal['screenshot']) -> Image
+
+   API to get a webpage after rendering it in a browser-like
+   environment
+
+   Parameters:
+      * **url** -- url of website
+
+      * **mode** -- Mode in which to return the result
+
+      * **wait_after_loaded** -- How long to wait after dom loaded
+        (for js to emit dynamic content). Should be in format such as
+        "1000ms" or "1s"
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+genlayer.nondet.web.request(url: str, /, *, method: Literal['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH'], body: str | bytes | None = None, headers: dict[str, str | bytes] = {}, sign: bool = False) -> Response
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+   Return type:
+      *Response*
+
+
+eq_principle
+============
+
+Equivalence principle module for consensus validation.
+
+This module provides different equivalence principles for validating
+non-deterministic operations across leader and validator nodes: -
+"strict_eq": Strict equality comparison - "prompt_comparative": NLP-
+based comparative validation - "prompt_non_comparative": NLP-based
+non-comparative validation
+
+genlayer.eq_principle.prompt_comparative(fn: Callable[[], T], principle: str, /) -> T
+
+   Comparative equivalence principle that utilizes NLP for verifying
+   that results are equivalent
+
+   For validator: in case of non-"Return" result in "fn", agreement
+   will be decided by "genlayer.gl.vm.run_nondet()", which executed
+   validator wrapper function in a sandbox VM. If on the other hand
+   leader reported an error, while our function execution is
+   successful, the validator votes "False".
+
+   Parameters:
+      * **fn** (*Callable**[**[**]**, **T**]*) -- function that does
+        all the job
+
+      * **principle** (*str*) -- principle with which equivalence will
+        be evaluated in the validator (via performing NLP)
+
+   Return type:
+      T
+
+   See "genlayer.gl.vm.run_nondet()" for description of data
+   transformations
+
+   Note:
+
+     As leader results are encoded as calldata, "format()" is used for
+     string representation. However, operating on strings by yourself
+     is more safe in general
+
+   Warning:
+
+     See "genlayer.gl.vm.run_nondet()" for description of data
+     transformations
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+genlayer.eq_principle.prompt_non_comparative(fn: Callable[[], str], /, *, task: str, criteria: str) -> str
+
+   Non-comparative equivalence principle that must cover most common
+   use cases
+
+   Both leader and validator finish their execution via NLP, that is
+   used to perform "task" on "input". Leader just executes this task,
+   but the validator checks if task was performed with integrity. This
+   principle is useful when task is subjective. For instance, when you
+   want to check if some text is a good summary of the input text.
+
+   For validator: in case of non-"Return" result in "fn", agreement
+   will be decided by "genlayer.gl.vm.run_nondet()", which executed
+   validator wrapper function in a sandbox VM. If on the other hand
+   leader reported an error, while our function execution is
+   successful, the validator votes "False".
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+   Return type:
+      str
+
+genlayer.eq_principle.strict_eq(fn: Callable[[], T], /) -> T
+
+   Comparative equivalence principle that checks for strict equality
+
+   This function checks that VM result is of the same type and has the
+   same value inside. It is the most performant equivalence principle,
+   but it is also the most strict one.
+
+   Parameters:
+      **fn** (*Callable**[**[**]**, **T**]*) -- function that provides
+      result that will be validated
+
+   Return type:
+      T
+
+   Warning:
+
+     See "genlayer.gl.vm.run_nondet()" for description of data
+     transformations
+
+   Note:
+
+     supports ".lazy()" version, which will return "Lazy"
+
+
+calldata
+========
+
+GenVM calldata encoding and decoding module.
+
+This module provides:
+
+* "encode": Encode Python objects to calldata bytes
+
+* "decode": Decode calldata bytes to Python objects
+
+* "to_str": Human-readable string representation
+
+* "CalldataEncodable": ABC for custom encoding
+
+* Type aliases: "Encodable", "Decoded", "EncodableWithDefault"
+
+Calldata natively supports following types:
+
+1. Primitive types:
+
+      1. python built-in: "bool", "None", "int", "str", "bytes"
+
+      2. "Address()" type
+
+2. Composite types:
+
+      1. "list" (and any other "collections.abc.Sequence")
+
+      2. "dict" with "str" keys (and any other
+         "collections.abc.Mapping" with "str" keys)
+
+For full calldata specification see genvm repo
+
+class genlayer.calldata.CalldataEncodable
+
+   Bases: "object"
+
+   Abstract class to support calldata encoding for custom types
+
+   Can be used to simplify code
+
+   abstractmethod __to_calldata__() -> Encodable
+
+      Override this method to return calldata-compatible type
+
+      Warning:
+
+        returning "self" may lead to an infinite loop or an exception
+
+      Return type:
+         Encodable
+
+exception genlayer.calldata.DecodingError
+
+   Bases: "ValueError"
+
+   __cause__
+
+      exception cause
+
+   __context__
+
+      exception context
+
+   __getattribute__(name, /)
+
+      Return getattr(self, name).
+
+   __init__(*args, **kwargs)
+
+   classmethod __new__(*args, **kwargs)
+
+   __reduce__()
+
+      Helper for pickle.
+
+   __repr__()
+
+      Return repr(self).
+
+   __setstate__()
+
+   __str__()
+
+      Return str(self).
+
+   __suppress_context__
+
+   __traceback__
+
+   add_note()
+
+      Exception.add_note(note) -- add a note to the exception
+
+   args
+
+   with_traceback()
+
+      Exception.with_traceback(tb) -- set self.__traceback__ to tb and
+      return self.
+
+genlayer.calldata.decode(mem0: Buffer, /, *, memview2bytes: Callable[[memoryview], Any] = bytes) -> Decoded
+
+   Decodes calldata encoded bytes into python DSL
+
+   Out of composite types it will contain only "dict" and "list"
+
+   Return type:
+      Decoded
+
+genlayer.calldata.encode(x: EncodableWithDefault, /, *, default: Callable[[EncodableWithDefault], Encodable] = encode_default_parameter) -> bytes
+
+   Encodes python object into calldata bytes
+
+   Parameters:
+      **default** (*Callable**[**[**EncodableWithDefault**]**,
+      **Encodable**]*) -- function to be applied to each object
+      recursively, it must return object encodable to calldata
+
+   Return type:
+      bytes
+
+   Warning:
+
+     All composite types in the end are coerced to "dict" and "list",
+     so custom type information is *not* be preserved. Such types
+     include:
+
+     1. "CalldataEncodable"
+
+     2. "dataclasses"
+
+genlayer.calldata.to_str(d: Encodable, /) -> str
+
+   Transforms calldata DSL into human readable json-like format,
+   should be used for debug purposes only
+
+   Return type:
+      str
+
+
+storage
+=======
+
+Persistent storage module for GenLayer contracts.
+
+This module provides: - "DynArray": Dynamic-length arrays - "Array":
+Fixed-size arrays - "TreeMap": Tree-based key-value storage -
+"allow_storage": Decorator for storage-enabled classes -
+"inmem_allocate": In-memory allocation utility - "Root": Root storage
+class
+
+class genlayer.storage.Array
+
+   Bases: "Sequence", "SizedArray", "Generic"
+
+   Constantly sized array that can be persisted on the blockchain
+
+   __init__()
+
+      This class can't be created with "Array()"
+
+      Raises:
+         **TypeError** -- always
+
+class genlayer.storage.Comparable
+
+   Bases: "Protocol"
+
+   Protocol for types that support "<" comparison.
+
+   __init__(*args, **kwargs)
+
+class genlayer.storage.DynArray
+
+   Bases: "MutableSequence", "Generic"
+
+   Represents exponentially growing array ("list" in python terms)
+   that can be persisted on the blockchain
+
+   __init__()
+
+      This class can't be created with "DynArray()"
+
+      Raises:
+         **TypeError** -- always
+
+   append(value: T, /) -> None
+
+      Append value to the end of the array.
+
+      Parameters:
+         **value** (*T*) -- value to append
+
+   append_new_get() -> T
+
+      Grow the array by one and return a reference to the new
+      (uninitialized) element.
+
+      Returns:
+         reference to the newly appended element
+
+      Return type:
+         T
+
+   assign(arr: Sequence, /) -> Self
+
+      Same as "self[:] = arr" but more efficient
+
+      Exception safety: On error list becomes empty
+
+      Return type:
+         *Self*
+
+   clear() -> None
+
+      Remove all elements from the array.
+
+   insert(index: int, value: T, /) -> None
+
+      Insert value before the given index.
+
+      Parameters:
+         * **index** (*int*) -- position to insert at
+
+         * **value** (*T*) -- value to insert
+
+      Raises:
+         **IndexError** -- when index is out of range
+
+   pop() -> None
+
+      Remove the last element.
+
+      Raises:
+         **Exception** -- when the array is empty
+
+class genlayer.storage.Indirection
+
+   Bases: "Generic"
+
+   This class provides ability to save data at its own slot. Occupies
+   1 byte to prevent collision.
+
+   __init__()
+
+   get() -> T
+
+      Read the indirected value.
+
+      Returns:
+         stored value
+
+      Return type:
+         T
+
+   set(val: T, /) -> None
+
+      Write a value through the indirection.
+
+      Parameters:
+         **val** (*T*) -- value to store
+
+   slot() -> Slot
+
+      Returns:
+         "Slot" at which data resides
+
+      Return type:
+         *Slot*
+
+class genlayer.storage.Manager
+
+   Bases: "object"
+
+   Abstract interface for storage backends.
+
+   do_read(slot_id: bytes, off: int, len: int, /) -> bytes
+
+      Read raw bytes from storage.
+
+      Parameters:
+         * **slot_id** (*bytes*) -- slot identifier
+
+         * **off** (*int*) -- byte offset within the slot
+
+         * **len** (*int*) -- number of bytes to read
+
+      Returns:
+         bytes read
+
+      Return type:
+         bytes
+
+   do_write(slot_id: bytes, off: int, what: Buffer, /)
+
+      Write raw bytes to storage.
+
+      Parameters:
+         * **slot_id** (*bytes*) -- slot identifier
+
+         * **off** (*int*) -- byte offset within the slot
+
+         * **what** (*Buffer*) -- data to write
+
+   get_store_slot(slot_id: bytes, /) -> Slot
+
+      Return a slot for the given address, creating one if necessary.
+
+      Parameters:
+         **slot_id** (*bytes*) -- 32-byte slot address
+
+      Returns:
+         storage slot
+
+      Return type:
+         *Slot*
+
+class genlayer.storage.Pickled
+
+   Bases: "Generic"
+
+   Storage wrapper that persists arbitrary Python objects via pickle
+   serialization.
+
+   load() -> T
+
+      Deserialize and return the stored value.
+
+      Returns:
+         the unpickled object
+
+      Return type:
+         T
+
+   store(val: T, /) -> None
+
+      Serialize and persist the given value.
+
+      Parameters:
+         **val** (*T*) -- object to pickle and store
+
+class genlayer.storage.Root
+
+   Bases: "object"
+
+   This ABI is known and used by:
+
+   1. genvm
+
+   2. node
+
+   MANAGER: ClassVar[Manager] = <genlayer.storage.core.InmemManager object>
+
+      Manager instance for the storage.
+
+      It is set to an actual storage manager in the runtime, but can
+      be overridden for testing purposes.
+
+   __init__(*args, **kwargs)
+
+   property code
+
+   property contract_instance
+
+   static get() -> Root
+
+      Return the root storage instance.
+
+      Returns:
+         singleton root object
+
+      Return type:
+         *Root*
+
+   get_contract_instance(typ: Type, /) -> T
+
+      Return the contract instance deserialized as the given type.
+
+      Parameters:
+         **typ** (*Type*) -- storage-allowed type to deserialize into
+
+      Returns:
+         contract instance
+
+      Return type:
+         T
+
+   get_vacant_slot() -> Slot
+
+      This slot can be used to store data without worrying about
+      overwriting contract data. Useful for bootstrapping contract
+      storage
+
+      Return type:
+         *Slot*
+
+   lock_default()
+
+      Lock the default set of slots (root, code, locked_slots,
+      upgraders) to prevent modification after deployment.
+
+   property locked_slots
+
+   property major
+
+   slot() -> Slot
+
+      Return the storage slot backing this root.
+
+      Returns:
+         underlying storage slot
+
+      Return type:
+         *Slot*
+
+   property upgraders
+
+class genlayer.storage.Slot
+
+   Bases: "object"
+
+   Handle to a named region of storage, identified by a 32-byte
+   address.
+
+   __init__(addr: bytes, manager: Manager, /)
+
+   as_int() -> u256
+
+      Return the slot address as an unsigned 256-bit integer.
+
+      Returns:
+         slot address as u256
+
+      Return type:
+         *Annotated*[int, StaticIntMeta(size=32, signed=False)]
+
+   id: bytes
+
+   indirect(off: int, /) -> Slot
+
+      Derive a child slot by hashing this slot's address with the
+      given offset.
+
+      Parameters:
+         **off** (*int*) -- offset used to derive the child address
+
+      Returns:
+         derived child slot
+
+      Return type:
+         *Slot*
+
+   manager: Manager
+
+   read(off: int, len: int, /) -> bytes
+
+      Read raw bytes from this slot.
+
+      Parameters:
+         * **off** (*int*) -- byte offset
+
+         * **len** (*int*) -- number of bytes to read
+
+      Returns:
+         bytes read
+
+      Return type:
+         bytes
+
+   write(off: int, what: Buffer, /) -> None
+
+      Write raw bytes to this slot.
+
+      Parameters:
+         * **off** (*int*) -- byte offset
+
+         * **what** (*Buffer*) -- data to write
+
+class genlayer.storage.TreeMap
+
+   Bases: "MutableMapping", "Generic"
+
+   Represents a mapping from keys to values that can be persisted on
+   the blockchain
+
+   Tparam K:
+      must implement "genlayer.storage.tree_map.Comparable" protocol
+      ("<" is needed) and be storage-allowed
+
+   Tparam V:
+      must be storage-allowed
+
+   assign(arr: Mapping, /) -> Self
+
+      Clear the map and populate it from the given mapping.
+
+      Parameters:
+         **arr** (*Mapping*) -- mapping to copy entries from
+
+      Returns:
+         self
+
+      Return type:
+         *Self*
+
+   clear()
+
+      Remove all entries from the map.
+
+   compute_if_absent(k: K, supplier: Callable[[], V], /) -> V
+
+      Returns:
+         Value associated with *k* if it is present, otherwise get's
+         new value from the supplier, stores it at *k* and returns
+
+      Return type:
+         V
+
+   get(k: K, /, default=None)
+
+      Returns:
+         Value associated with *k* or *default* if there is no such
+         value
+
+   get_or_insert_default(k: K, /) -> V
+
+      Return value for key, inserting a default-initialized entry if
+      absent.
+
+      Parameters:
+         **k** (*K*) -- key to look up or insert
+
+      Returns:
+         value associated with the key
+
+      Return type:
+         V
+
+   items() -> ItemsView
+
+      Return a view of all (key, value) pairs in sorted order.
+
+      Returns:
+         items view
+
+      Return type:
+         *ItemsView*
+
+class genlayer.storage.VLA
+
+   Bases: "PseudoSequence", "Generic"
+
+   Variable Length Array. Can be used in pair with "Indirection" to
+   save length at the same place as data. Can also be used in C
+   language way. Occupies at least 4 bytes (for length)
+
+   append(val: T, /)
+
+      Append a value to the end of the array.
+
+      Parameters:
+         **val** (*T*) -- value to append
+
+   assign(val: PseudoSequence, /)
+
+      Replace contents with elements from "val", truncating first.
+
+      Parameters:
+         **val** (*PseudoSequence*) -- sequence of values (or raw
+         bytes for "VLA[u8]")
+
+   data_offset() -> int
+
+      Return type:
+         int
+
+   extend(val: PseudoSequence, /)
+
+      Add all elements from "val", truncating first.
+
+      Parameters:
+         **val** (*PseudoSequence*) -- sequence of values (or raw
+         bytes for "VLA[u8]")
+
+   set_length(length: int, /)
+
+      Set the array length
+
+   slot() -> Slot
+
+      Return the underlying storage slot.
+
+      Returns:
+         storage slot
+
+      Return type:
+         *Slot*
+
+   truncate(to: int = 0, /)
+
+      Truncate the array to the given length.
+
+      Parameters:
+         **to** (*int*) -- new length (default 0)
+
+      Raises:
+         **IndexError** -- when "to" exceeds current length
+
+genlayer.storage.allow(cls: T) -> T
+
+   Marks class as allowed to be used within storage. Without this
+   annotation, storage builder will raise an exception when trying to
+   generate description for the class. This behavior is required to
+   prevent accidental usage of classes that are not designed to be
+   used in storage, because storage-generated class is modified and
+   starts to behave differently from regular python class)
+
+   Return type:
+      T
+
+genlayer.storage.inmem_allocate(t: Type, /, *init_args, **init_kwargs) -> T
+
+   Allocate a storage type in memory (useful for testing).
+
+   Parameters:
+      * **t** (*Type*) -- storage-allowed type to allocate
+
+      * **init_args** -- positional arguments forwarded to "__init__"
+
+      * **init_kwargs** -- keyword arguments forwarded to "__init__"
+
+   Returns:
+      new in-memory instance of the given type
+
+   Return type:
+      T
+
+
+types
+=====
+
+Core type definitions for GenLayer contracts
+
+class genlayer.types.Address
+
+   Bases: "object"
+
+   Represents GenLayer Address
+
+   SIZE: Final[int] = 20
+
+      Constant that represents size of a Genlayer address
+
+   ZERO: ClassVar[Address] = Address("0x0000000000000000000000000000000000000000")
+
+      The zero address (0x0000000000000000000000000000000000000000)
+
+   __init__(val: str | Buffer | Address)
+
+      Parameters:
+         **val** (*str** | **Buffer** | **Address*) -- either a hex
+         encoded address (that starts with '0x'), or base64 encoded
+         address, or buffer of 20 bytes
+
+      Warning:
+
+        checksum validation is not performed
+
+   property as_b64: str
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_b64
+      'WzjaanAcVoVF3PywP8uHX1a+3cQ='
+
+      Returns:
+         base64 representation of an address (most compact string)
+
+   property as_bytes: bytes
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_bytes
+      b'[8\xdajp\x1cV\x85E\xdc\xfc\xb0?\xcb\x87_V\xbe\xdd\xc4'
+
+      Returns:
+         raw bytes of an address (most compact representation)
+
+   property as_hex: str
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_hex
+      '0x5B38Da6a701c568545dCfcB03FcB875f56beddC4'
+
+      Returns:
+         checksum string representation
+
+   property as_int: Annotated[int, StaticIntMeta(size=20, signed=False)]
+
+      >>> Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_int
+      1123907236495940146162314350759402901750813440091
+      >>> hex(Address('0x5b38da6a701c568545dcfcb03fcb875f56beddc4').as_int)
+      '0xc4ddbe565f87cb3fb0fcdc4585561c706ada385b'
+
+      Returns:
+         int representation of an address (unsigned little endian)
+
+genlayer.types.Keccak256(initial_input: Buffer | None = None)
+
+class genlayer.types.KeccakHash
+
+   Bases: "object"
+
+   The Keccak hash function, with a hashlib-compatible interface.
+
+   __init__(bitrate_bits: int, capacity_bits: int, output_bits: int)
+
+      Create a new Keccak hash instance.
+
+      Parameters:
+         * **bitrate_bits** (*int*) -- bitrate in bits
+
+         * **capacity_bits** (*int*) -- capacity in bits
+
+         * **output_bits** (*int*) -- output length in bits (must be
+           divisible by 8)
+
+   block_size
+
+   copy() -> KeccakHash
+
+      Return a copy of this hash object.
+
+      Return type:
+         *KeccakHash*
+
+   digest() -> bytes
+
+      Return the digest of the data fed so far.
+
+      Returns:
+         hash digest as bytes
+
+      Return type:
+         bytes
+
+   digest_size
+
+   hexdigest() -> str
+
+      Return the hex-encoded digest of the data fed so far.
+
+      Returns:
+         hash digest as hex string
+
+      Return type:
+         str
+
+   static preset(bitrate_bits, capacity_bits, output_bits)
+
+      Returns a factory function for the given bitrate, sponge
+      capacity and output length. The function accepts an optional
+      initial input, ala hashlib.
+
+   sponge
+
+   update(s: Buffer, /) -> None
+
+      Feed data into the hash.
+
+      Parameters:
+         **s** (*Buffer*) -- bytes-like data to absorb
+
+class genlayer.types.Lazy
+
+   Bases: "Generic"
+
+   Base class to support lazy evaluation
+
+   __init__(_eval: Callable[[], T])
+
+   get() -> T
+
+      Performs evaluation if necessary (only ones) and stores the
+      result
+
+      Returns:
+         result of evaluating
+
+      Raises:
+         *iff* evaluation raised, this outcome is also cached, so
+         subsequent calls will raise same exception
+
+      Return type:
+         T
+
+class genlayer.types.SizedArray
+
+   Bases: "Protocol", "Generic"
+
+   __init__(*args, **kwargs)
+
+genlayer.types.bigint
+
+   Just an alias for "int", it is introduced to prevent accidental use
+   of low-performance big integers in the store
+
+   alias of "Annotated"["int", 'bigint']
+
+genlayer.types.i104
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=13, signed=True)]
+
+genlayer.types.i112
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=14, signed=True)]
+
+genlayer.types.i120
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=15, signed=True)]
+
+genlayer.types.i128
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=16, signed=True)]
+
+genlayer.types.i136
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=17, signed=True)]
+
+genlayer.types.i144
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=18, signed=True)]
+
+genlayer.types.i152
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=19, signed=True)]
+
+genlayer.types.i16
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=2, signed=True)]
+
+genlayer.types.i160
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=20, signed=True)]
+
+genlayer.types.i168
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=21, signed=True)]
+
+genlayer.types.i176
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=22, signed=True)]
+
+genlayer.types.i184
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=23, signed=True)]
+
+genlayer.types.i192
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=24, signed=True)]
+
+genlayer.types.i200
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=25, signed=True)]
+
+genlayer.types.i208
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=26, signed=True)]
+
+genlayer.types.i216
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=27, signed=True)]
+
+genlayer.types.i224
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=28, signed=True)]
+
+genlayer.types.i232
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=29, signed=True)]
+
+genlayer.types.i24
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=3, signed=True)]
+
+genlayer.types.i240
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=30, signed=True)]
+
+genlayer.types.i248
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=31, signed=True)]
+
+genlayer.types.i256
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=32, signed=True)]
+
+genlayer.types.i32
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=4, signed=True)]
+
+genlayer.types.i40
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=5, signed=True)]
+
+genlayer.types.i48
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=6, signed=True)]
+
+genlayer.types.i56
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=7, signed=True)]
+
+genlayer.types.i64
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=8, signed=True)]
+
+genlayer.types.i72
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=9, signed=True)]
+
+genlayer.types.i8
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=1, signed=True)]
+
+genlayer.types.i80
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=10, signed=True)]
+
+genlayer.types.i88
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=11, signed=True)]
+
+genlayer.types.i96
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=12, signed=True)]
+
+genlayer.types.u104
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=13, signed=False)]
+
+genlayer.types.u112
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=14, signed=False)]
+
+genlayer.types.u120
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=15, signed=False)]
+
+genlayer.types.u128
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=16, signed=False)]
+
+genlayer.types.u136
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=17, signed=False)]
+
+genlayer.types.u144
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=18, signed=False)]
+
+genlayer.types.u152
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=19, signed=False)]
+
+genlayer.types.u16
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=2, signed=False)]
+
+genlayer.types.u160
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=20, signed=False)]
+
+genlayer.types.u168
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=21, signed=False)]
+
+genlayer.types.u176
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=22, signed=False)]
+
+genlayer.types.u184
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=23, signed=False)]
+
+genlayer.types.u192
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=24, signed=False)]
+
+genlayer.types.u200
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=25, signed=False)]
+
+genlayer.types.u208
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=26, signed=False)]
+
+genlayer.types.u216
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=27, signed=False)]
+
+genlayer.types.u224
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=28, signed=False)]
+
+genlayer.types.u232
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=29, signed=False)]
+
+genlayer.types.u24
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=3, signed=False)]
+
+genlayer.types.u240
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=30, signed=False)]
+
+genlayer.types.u248
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=31, signed=False)]
+
+genlayer.types.u256
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=32, signed=False)]
+
+genlayer.types.u32
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=4, signed=False)]
+
+genlayer.types.u40
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=5, signed=False)]
+
+genlayer.types.u48
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=6, signed=False)]
+
+genlayer.types.u56
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=7, signed=False)]
+
+genlayer.types.u64
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=8, signed=False)]
+
+genlayer.types.u72
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=9, signed=False)]
+
+genlayer.types.u8
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=1, signed=False)]
+
+genlayer.types.u80
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=10, signed=False)]
+
+genlayer.types.u88
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=11, signed=False)]
+
+genlayer.types.u96
+
+   Fixed size integer alias for storage
+
+   alias of "Annotated"["int", StaticIntMeta(size=12, signed=False)]
+
+
+### reference/genlayer_embeddings.txt
+
+Package genlayer_embeddings
+***************************
+
+class genlayer_embeddings.Distance
+
+   Bases: "Protocol"
+
+   __call__(l, r) -> Any
+
+      Call self as a function.
+
+      Return type:
+         *Any*
+
+   __init__(*args, **kwargs)
+
+class genlayer_embeddings.EuclideanDistanceSquared
+
+   Bases: "Distance"
+
+   __call__(l, r)
+
+      Call self as a function.
+
+   __gl_allow_storage__ = True
+
+   __init__(*args, **kwargs)
+
+   batch(l, r)
+
+genlayer_embeddings.SentenceTransformer(model: str) -> Callable[[str], ndarray]
+
+   Return type:
+      *Callable*[[str], *ndarray*]
+
+genlayer_embeddings.SentenceTransformerFromPath(path: str) -> Callable[[str], ndarray]
+
+   Return type:
+      *Callable*[[str], *ndarray*]
+
+class genlayer_embeddings.VecDB
+
+   Bases: "Generic"
+
+   Data structure that supports storing and querying vector data using
+   Cover Trees
+
+   Cover trees provide logarithmic time nearest neighbor search with
+   theoretical guarantees.
+
+   There are two entities that can act as a key:
+
+   1. vector (can have duplicates)
+
+   2. id (int alias, can't have duplicates)
+
+   Warning:
+
+     import "numpy" before "from genlayer import *" if you wish to use
+     "VecDB"!
+
+   Element = Element
+
+   Id = Id
+
+   __gl_allow_storage__ = True
+
+   __init__()
+
+   __iter__()
+
+   __len__() -> int
+
+      Return type:
+         int
+
+   get_by_id(id: Id) -> VecDBElement[T, S, V, None]
+
+      Return type:
+         VecDBElement[T, S, V, None]
+
+   get_by_id_or_none(id: Id) -> VecDBElement[T, S, V, None] | None
+
+      Return type:
+         VecDBElement[T, S, V, None] | None
+
+   insert(key: np.ndarray[tuple[S], np.dtype[T]], val: V) -> Id
+
+      Return type:
+         Id
+
+   knn(v: np.ndarray[tuple[S], np.dtype[T]], k: int) -> Iterator[VecDBElement[T, S, V, T]]
+
+      Find k nearest neighbors using cover tree with pruning
+
+      Return type:
+         *Iterator*[VecDBElement[T, S, V, T]]
+
+genlayer_embeddings.get_model(model: str, inputs: dict[str, DTypeLike], *, models_db=_ALL_MODELS)
+
+
+### reference/index.txt
+
+API Reference
+*************
+
+* Package genlayer
+
+  * Top level
+
+    * "Address"
+
+      * "Address.SIZE"
+
+      * "Address.ZERO"
+
+      * "Address.__eq__()"
+
+      * "Address.__format__()"
+
+      * "Address.__ge__()"
+
+      * "Address.__gt__()"
+
+      * "Address.__hash__()"
+
+      * "Address.__init__()"
+
+      * "Address.__le__()"
+
+      * "Address.__lt__()"
+
+      * "Address.__repr__()"
+
+      * "Address.__str__()"
+
+      * "Address.as_b64"
+
+      * "Address.as_bytes"
+
+      * "Address.as_hex"
+
+      * "Address.as_int"
+
+    * "Array"
+
+      * "Array.__contains__()"
+
+      * "Array.__getitem__()"
+
+      * "Array.__init__()"
+
+      * "Array.__iter__()"
+
+      * "Array.__len__()"
+
+      * "Array.__non_callable_proto_members__"
+
+      * "Array.__setitem__()"
+
+      * "Array.count()"
+
+      * "Array.index()"
+
+    * "DynArray"
+
+      * "DynArray.__contains__()"
+
+      * "DynArray.__delitem__()"
+
+      * "DynArray.__getitem__()"
+
+      * "DynArray.__iadd__()"
+
+      * "DynArray.__init__()"
+
+      * "DynArray.__iter__()"
+
+      * "DynArray.__len__()"
+
+      * "DynArray.__repr__()"
+
+      * "DynArray.__setitem__()"
+
+      * "DynArray.append()"
+
+      * "DynArray.append_new_get()"
+
+      * "DynArray.assign()"
+
+      * "DynArray.clear()"
+
+      * "DynArray.count()"
+
+      * "DynArray.extend()"
+
+      * "DynArray.index()"
+
+      * "DynArray.insert()"
+
+      * "DynArray.pop()"
+
+      * "DynArray.remove()"
+
+      * "DynArray.reverse()"
+
+    * "Keccak256()"
+
+    * "Lazy"
+
+      * "Lazy.__init__()"
+
+      * "Lazy.get()"
+
+    * "SizedArray"
+
+      * "SizedArray.__getitem__()"
+
+      * "SizedArray.__init__()"
+
+      * "SizedArray.__iter__()"
+
+      * "SizedArray.__len__()"
+
+      * "SizedArray.__non_callable_proto_members__"
+
+    * "TreeMap"
+
+      * "TreeMap.__contains__()"
+
+      * "TreeMap.__delitem__()"
+
+      * "TreeMap.__eq__()"
+
+      * "TreeMap.__getitem__()"
+
+      * "TreeMap.__gl_allow_storage__"
+
+      * "TreeMap.__hash__"
+
+      * "TreeMap.__iter__()"
+
+      * "TreeMap.__len__()"
+
+      * "TreeMap.__repr__()"
+
+      * "TreeMap.__setitem__()"
+
+      * "TreeMap.assign()"
+
+      * "TreeMap.clear()"
+
+      * "TreeMap.compute_if_absent()"
+
+      * "TreeMap.get()"
+
+      * "TreeMap.get_or_insert_default()"
+
+      * "TreeMap.items()"
+
+      * "TreeMap.keys()"
+
+      * "TreeMap.pop()"
+
+      * "TreeMap.popitem()"
+
+      * "TreeMap.setdefault()"
+
+      * "TreeMap.update()"
+
+      * "TreeMap.values()"
+
+    * "private()"
+
+    * "public"
+
+      * "public.view()"
+
+      * "public.write"
+
+    * Integer aliases
+
+  * contract
+
+    * "Contract"
+
+      * "Contract.address"
+
+      * "Contract.balance"
+
+      * "Contract.emit_transfer()"
+
+    * "GenVMContractDeclaration"
+
+      * "GenVMContractDeclaration.View"
+
+      * "GenVMContractDeclaration.Write"
+
+      * "GenVMContractDeclaration.__init__()"
+
+    * "Proxy"
+
+      * "Proxy.emit()"
+
+      * "Proxy.emit_transfer()"
+
+      * "Proxy.view()"
+
+    * "StorageType"
+
+      * "StorageType.DEFAULT"
+
+      * "StorageType.LATEST_FINAL"
+
+      * "StorageType.LATEST_NON_FINAL"
+
+      * "StorageType.__new__()"
+
+    * "deploy()"
+
+    * "get_at()"
+
+    * "interface()"
+
+  * message
+
+    * "MessageRawType"
+
+      * "MessageRawType.chain_id"
+
+      * "MessageRawType.contract_address"
+
+      * "MessageRawType.datetime"
+
+      * "MessageRawType.entry_data"
+
+      * "MessageRawType.entry_kind"
+
+      * "MessageRawType.entry_stage_data"
+
+      * "MessageRawType.is_init"
+
+      * "MessageRawType.origin_address"
+
+      * "MessageRawType.sender_address"
+
+      * "MessageRawType.stack"
+
+      * "MessageRawType.value"
+
+    * "chain_id"
+
+    * "contract_address"
+
+    * "entry_data"
+
+    * "entry_kind"
+
+    * "entry_stage_data"
+
+    * "is_init"
+
+    * "origin_address"
+
+    * "raw"
+
+    * "sender_address"
+
+    * "stack"
+
+    * "value"
+
+  * chain
+
+    * "Account"
+
+      * "Account.__init__()"
+
+      * "Account.__non_callable_proto_members__"
+
+      * "Account.address"
+
+      * "Account.balance"
+
+      * "Account.emit_transfer()"
+
+    * "Event"
+
+      * "Event.__init__()"
+
+      * "Event.emit()"
+
+      * "Event.emit_raw()"
+
+      * "Event.indexed"
+
+      * "Event.name"
+
+      * "Event.signature"
+
+    * "IAccount"
+
+      * "IAccount.__init__()"
+
+      * "IAccount.__non_callable_proto_members__"
+
+      * "IAccount.address"
+
+      * "IAccount.balance"
+
+      * "IAccount.emit_transfer()"
+
+    * "id"
+
+  * vm
+
+    * "Return"
+
+      * "Return.__init__()"
+
+      * "Return.calldata"
+
+    * "UserError"
+
+      * "UserError.__init__()"
+
+      * "UserError.data"
+
+      * "UserError.immediate()"
+
+    * "VMError"
+
+      * "VMError.__init__()"
+
+      * "VMError.message"
+
+    * "run_nondet()"
+
+    * "run_nondet_unsafe()"
+
+    * "spawn_sandbox()"
+
+    * "trace()"
+
+    * "trace_time_micro()"
+
+    * "unpack_result()"
+
+  * evm
+
+    * "ContractDeclaration"
+
+      * "ContractDeclaration.View"
+
+      * "ContractDeclaration.Write"
+
+      * "ContractDeclaration.__init__()"
+
+    * "ContractProxy"
+
+      * "ContractProxy.__init__()"
+
+      * "ContractProxy.address"
+
+      * "ContractProxy.balance"
+
+      * "ContractProxy.emit()"
+
+      * "ContractProxy.emit_transfer()"
+
+      * "ContractProxy.view()"
+
+    * "InplaceTuple"
+
+    * "MethodEncoder"
+
+      * "MethodEncoder.__init__()"
+
+      * "MethodEncoder.decode_ret()"
+
+      * "MethodEncoder.encode_call()"
+
+    * "bytes1"
+
+    * "bytes10"
+
+    * "bytes11"
+
+    * "bytes12"
+
+    * "bytes13"
+
+    * "bytes14"
+
+    * "bytes15"
+
+    * "bytes16"
+
+    * "bytes17"
+
+    * "bytes18"
+
+    * "bytes19"
+
+    * "bytes2"
+
+    * "bytes20"
+
+    * "bytes21"
+
+    * "bytes22"
+
+    * "bytes23"
+
+    * "bytes24"
+
+    * "bytes25"
+
+    * "bytes26"
+
+    * "bytes27"
+
+    * "bytes28"
+
+    * "bytes29"
+
+    * "bytes3"
+
+    * "bytes30"
+
+    * "bytes31"
+
+    * "bytes32"
+
+    * "bytes4"
+
+    * "bytes5"
+
+    * "bytes6"
+
+    * "bytes7"
+
+    * "bytes8"
+
+    * "bytes9"
+
+    * "decode()"
+
+    * "encode()"
+
+    * "selector_of()"
+
+    * "signature_of()"
+
+    * "type_name_of()"
+
+  * nondet
+
+    * "Image"
+
+      * "Image.__init__()"
+
+      * "Image.pil"
+
+      * "Image.raw"
+
+    * "exec_prompt()"
+
+  * nondet.web
+
+    * "Response"
+
+      * "Response.__eq__()"
+
+      * "Response.__hash__"
+
+      * "Response.__init__()"
+
+      * "Response.__repr__()"
+
+      * "Response.body"
+
+      * "Response.headers"
+
+      * "Response.status"
+
+    * "delete()"
+
+    * "get()"
+
+    * "head()"
+
+    * "patch()"
+
+    * "post()"
+
+    * "render()"
+
+    * "request()"
+
+  * eq_principle
+
+    * "prompt_comparative()"
+
+    * "prompt_non_comparative()"
+
+    * "strict_eq()"
+
+  * calldata
+
+    * "CalldataEncodable"
+
+      * "CalldataEncodable.__to_calldata__()"
+
+    * "DecodingError"
+
+      * "DecodingError.__cause__"
+
+      * "DecodingError.__context__"
+
+      * "DecodingError.__getattribute__()"
+
+      * "DecodingError.__init__()"
+
+      * "DecodingError.__new__()"
+
+      * "DecodingError.__reduce__()"
+
+      * "DecodingError.__repr__()"
+
+      * "DecodingError.__setstate__()"
+
+      * "DecodingError.__str__()"
+
+      * "DecodingError.__suppress_context__"
+
+      * "DecodingError.__traceback__"
+
+      * "DecodingError.add_note()"
+
+      * "DecodingError.args"
+
+      * "DecodingError.with_traceback()"
+
+    * "decode()"
+
+    * "encode()"
+
+    * "to_str()"
+
+  * storage
+
+    * "Array"
+
+      * "Array.__init__()"
+
+    * "Comparable"
+
+      * "Comparable.__init__()"
+
+    * "DynArray"
+
+      * "DynArray.__init__()"
+
+      * "DynArray.append()"
+
+      * "DynArray.append_new_get()"
+
+      * "DynArray.assign()"
+
+      * "DynArray.clear()"
+
+      * "DynArray.insert()"
+
+      * "DynArray.pop()"
+
+    * "Indirection"
+
+      * "Indirection.__init__()"
+
+      * "Indirection.get()"
+
+      * "Indirection.set()"
+
+      * "Indirection.slot()"
+
+    * "Manager"
+
+      * "Manager.do_read()"
+
+      * "Manager.do_write()"
+
+      * "Manager.get_store_slot()"
+
+    * "Pickled"
+
+      * "Pickled.load()"
+
+      * "Pickled.store()"
+
+    * "Root"
+
+      * "Root.MANAGER"
+
+      * "Root.__init__()"
+
+      * "Root.code"
+
+      * "Root.contract_instance"
+
+      * "Root.get()"
+
+      * "Root.get_contract_instance()"
+
+      * "Root.get_vacant_slot()"
+
+      * "Root.lock_default()"
+
+      * "Root.locked_slots"
+
+      * "Root.major"
+
+      * "Root.slot()"
+
+      * "Root.upgraders"
+
+    * "Slot"
+
+      * "Slot.__init__()"
+
+      * "Slot.as_int()"
+
+      * "Slot.id"
+
+      * "Slot.indirect()"
+
+      * "Slot.manager"
+
+      * "Slot.read()"
+
+      * "Slot.write()"
+
+    * "TreeMap"
+
+      * "TreeMap.assign()"
+
+      * "TreeMap.clear()"
+
+      * "TreeMap.compute_if_absent()"
+
+      * "TreeMap.get()"
+
+      * "TreeMap.get_or_insert_default()"
+
+      * "TreeMap.items()"
+
+    * "VLA"
+
+      * "VLA.append()"
+
+      * "VLA.assign()"
+
+      * "VLA.data_offset()"
+
+      * "VLA.extend()"
+
+      * "VLA.set_length()"
+
+      * "VLA.slot()"
+
+      * "VLA.truncate()"
+
+    * "allow()"
+
+    * "inmem_allocate()"
+
+  * types
+
+    * "Address"
+
+      * "Address.SIZE"
+
+      * "Address.ZERO"
+
+      * "Address.__init__()"
+
+      * "Address.as_b64"
+
+      * "Address.as_bytes"
+
+      * "Address.as_hex"
+
+      * "Address.as_int"
+
+    * "Keccak256()"
+
+    * "KeccakHash"
+
+      * "KeccakHash.__init__()"
+
+      * "KeccakHash.block_size"
+
+      * "KeccakHash.copy()"
+
+      * "KeccakHash.digest()"
+
+      * "KeccakHash.digest_size"
+
+      * "KeccakHash.hexdigest()"
+
+      * "KeccakHash.preset()"
+
+      * "KeccakHash.sponge"
+
+      * "KeccakHash.update()"
+
+    * "Lazy"
+
+      * "Lazy.__init__()"
+
+      * "Lazy.get()"
+
+    * "SizedArray"
+
+      * "SizedArray.__init__()"
+
+    * "bigint"
+
+    * "i104"
+
+    * "i112"
+
+    * "i120"
+
+    * "i128"
+
+    * "i136"
+
+    * "i144"
+
+    * "i152"
+
+    * "i16"
+
+    * "i160"
+
+    * "i168"
+
+    * "i176"
+
+    * "i184"
+
+    * "i192"
+
+    * "i200"
+
+    * "i208"
+
+    * "i216"
+
+    * "i224"
+
+    * "i232"
+
+    * "i24"
+
+    * "i240"
+
+    * "i248"
+
+    * "i256"
+
+    * "i32"
+
+    * "i40"
+
+    * "i48"
+
+    * "i56"
+
+    * "i64"
+
+    * "i72"
+
+    * "i8"
+
+    * "i80"
+
+    * "i88"
+
+    * "i96"
+
+    * "u104"
+
+    * "u112"
+
+    * "u120"
+
+    * "u128"
+
+    * "u136"
+
+    * "u144"
+
+    * "u152"
+
+    * "u16"
+
+    * "u160"
+
+    * "u168"
+
+    * "u176"
+
+    * "u184"
+
+    * "u192"
+
+    * "u200"
+
+    * "u208"
+
+    * "u216"
+
+    * "u224"
+
+    * "u232"
+
+    * "u24"
+
+    * "u240"
+
+    * "u248"
+
+    * "u256"
+
+    * "u32"
+
+    * "u40"
+
+    * "u48"
+
+    * "u56"
+
+    * "u64"
+
+    * "u72"
+
+    * "u8"
+
+    * "u80"
+
+    * "u88"
+
+    * "u96"
+
+* Package genlayer_embeddings
+
+  * "Distance"
+
+    * "Distance.__call__()"
+
+    * "Distance.__init__()"
+
+  * "EuclideanDistanceSquared"
+
+    * "EuclideanDistanceSquared.__call__()"
+
+    * "EuclideanDistanceSquared.__gl_allow_storage__"
+
+    * "EuclideanDistanceSquared.__init__()"
+
+    * "EuclideanDistanceSquared.batch()"
+
+  * "SentenceTransformer()"
+
+  * "SentenceTransformerFromPath()"
+
+  * "VecDB"
+
+    * "VecDB.Element"
+
+    * "VecDB.Id"
+
+    * "VecDB.__gl_allow_storage__"
+
+    * "VecDB.__init__()"
+
+    * "VecDB.__iter__()"
+
+    * "VecDB.__len__()"
+
+    * "VecDB.get_by_id()"
+
+    * "VecDB.get_by_id_or_none()"
+
+    * "VecDB.insert()"
+
+    * "VecDB.knn()"
+
+  * "get_model()"
+
+
+### runners/index.txt
+
+Runners
+*******
+
+Runners are language runtimes compiled to WebAssembly that execute
+inside GenVM. For the Python SDK, this includes CPython and supporting
+libraries (cloudpickle, protobuf, embeddings, etc.) compiled to WASM.
+
+Each runner is identified by a content hash. When GenVM executes a
+contract, it loads the specific runner versions declared in the
+contract's dependencies.
+
+
+Using Runners
+=============
+
+In your contract's first line, specify the runner dependency:
+
+   # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
+
+For multi-file contracts, use "py-genlayer-multi" instead.
+
+For contracts using embeddings or semantic search, add "py-lib-
+genlayer-embeddings" before the main runner using a Seq block:
+
+   # {
+   #   "Seq": [
+   #     { "Depends": "py-lib-genlayer-embeddings:<hash>" },
+   #     { "Depends": "py-genlayer:<hash>" }
+   #   ]
+   # }
+
+For the full runner specification, see Runners.
+
+For version history and what changed, see the Changelog.
+
+For list of available runners and their hashes, see the Available
+Runners in the appendix.
+
+
