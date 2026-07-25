@@ -34,10 +34,10 @@ export default function Dashboard() {
     transport: http(RPC_URL),
   });
 
-  // Write client: MetaMask signs, genlayer encodes calldata correctly for Intelligent Contracts
+  // Write client: uses `provider` pattern (proven by cogniflux)
   const getWriteClient = (userAccount: string) => createClient({
     chain: studionet,
-    transport: custom((window as any).ethereum),
+    provider: (window as any).ethereum,
     account: userAccount as `0x${string}`,
   });
 
