@@ -5,13 +5,6 @@ import hashlib
 from genlayer import *
 import genlayer.gl.vm as glvm
 
-@gl.evm.contract_interface
-class _Recipient:
-    class View:
-        pass
-    class Write:
-        pass
-
 class LinguaNova(gl.Contract):
     # State mapping using TreeMap to store JSON strings
     bounties: TreeMap[str, str]
@@ -448,7 +441,7 @@ Return ONLY valid JSON matching this schema exactly:
                 protocol_stats["total_payable_amount"] += payable
                 self.stats["protocol"] = json.dumps(protocol_stats)
                 try:
-                    _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
+                    gl.chain.Account(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)))
                 except Exception as e:
                     protocol_stats["last_payout_error"] = str(e)
                     self.stats["protocol"] = json.dumps(protocol_stats)
