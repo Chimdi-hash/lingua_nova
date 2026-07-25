@@ -6,7 +6,7 @@ import { createAccount } from "viem/accounts";
 import { studionet } from "genlayer-js/chains";
 
 // Contract Address from Env or Fallback
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0xB709775999c7011cb08a6E5d7b71e508977C7836";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x6f4a937eB38F012E675e9Fa3001c0e599E4ae759";
 
 // Minimal Viem configuration for Wallet Connection
 import { createWalletClient, custom, publicActions, parseEther, formatEther } from "viem";
@@ -14,7 +14,7 @@ import { createWalletClient, custom, publicActions, parseEther, formatEther } fr
 export default function Dashboard() {
   const [account, setAccount] = useState<string | null>(null);
   const [client, setClient] = useState<any>(null);
-  const [contractAddress, setContractAddress] = useState("0xB709775999c7011cb08a6E5d7b71e508977C7836");
+  const [contractAddress, setContractAddress] = useState("0x6f4a937eB38F012E675e9Fa3001c0e599E4ae759");
   const [activeTab, setActiveTab] = useState("browse");
   const [balance, setBalance] = useState<string>("0.00");
   const [loading, setLoading] = useState(false);
