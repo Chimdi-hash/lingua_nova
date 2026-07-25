@@ -399,7 +399,7 @@ export default function Dashboard() {
                     <div style={{ borderTop: "1px solid #334155", paddingTop: "1rem", marginTop: "1rem" }}>
                       <div className="detail-row">
                         <span className="detail-label">Payment Status</span>
-                        <span className={sub.payment_status === 'PAYABLE' ? 'text-success' : 'text-danger'}>
+                        <span className={sub.payment_status === 'PAID' ? 'text-success' : 'text-danger'}>
                           {sub.payment_status}
                         </span>
                       </div>

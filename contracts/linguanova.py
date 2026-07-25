@@ -271,7 +271,7 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
         submission["status"] = verdict
 
         if review_data.get("release_payment"):
-            submission["payment_status"] = "PAYABLE"
+            submission["payment_status"] = "PAID"
         else:
             submission["payment_status"] = "BURNED"
 
@@ -281,7 +281,7 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
             rep = json.loads(self.reputations[submission["translator"]])
             if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
                 rep["approved_count"] += 1
-                if submission["payment_status"] == "PAYABLE":
+                if submission["payment_status"] == "PAID":
                     # Use the bounty reward_amount directly — this is the actual amount held by the contract
                     payable = float(bounty.get("reward_amount", 0))
                     rep["total_payable_amount"] += payable
@@ -428,7 +428,7 @@ Return ONLY valid JSON matching this schema exactly:
         submission["status"] = verdict
 
         if review_data.get("release_payment"):
-            submission["payment_status"] = "PAYABLE"
+            submission["payment_status"] = "PAID"
         else:
             submission["payment_status"] = "BURNED"
 
@@ -437,7 +437,7 @@ Return ONLY valid JSON matching this schema exactly:
         rep = json.loads(self.reputations[submission["translator"]])
         if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
             rep["approved_count"] += 1
-            if submission["payment_status"] == "PAYABLE":
+            if submission["payment_status"] == "PAID":
                 payable = float(bounty.get("reward_amount", 0))
                 rep["total_payable_amount"] += payable
                 protocol_stats = json.loads(self.stats["protocol"])
@@ -567,7 +567,7 @@ Return ONLY valid JSON matching this schema exactly:
 
         submission["status"] = dispute_review_data.get("new_submission_decision", submission["status"])
         if dispute_review_data.get("release_payment"):
-            submission["payment_status"] = "PAYABLE"
+            submission["payment_status"] = "PAID"
             protocol_stats = json.loads(self.stats["protocol"])
             try:
                 bounty_str = self.bounties.get(submission["bounty_id"])
