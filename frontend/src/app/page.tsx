@@ -14,6 +14,7 @@ import { createWalletClient, custom, publicActions, parseEther, formatEther } fr
 export default function Dashboard() {
   const [account, setAccount] = useState<string | null>(null);
   const [client, setClient] = useState<any>(null);
+  const [contractAddress, setContractAddress] = useState("0x2b6F42d6a5d03dc81551E2f520ef58037F4f5C79");
   const [activeTab, setActiveTab] = useState("browse");
   const [balance, setBalance] = useState<string>("0.00");
   const [loading, setLoading] = useState(false);
