@@ -28,10 +28,17 @@ export default function Dashboard() {
     translated_text: "", translator_notes: "", glossary_choices: "", cultural_context_notes: ""
   });
 
-  // Read-only client using direct HTTP transport (no MetaMask dependency = no CORS issues)
+  // Read-only client: direct HTTP — no MetaMask, no CORS issues on Vercel
   const getReadClient = () => createClient({
     chain: studionet,
     transport: http(RPC_URL),
+  });
+
+  // Write client: MetaMask signs, genlayer encodes calldata correctly for Intelligent Contracts
+  const getWriteClient = (userAccount: string) => createClient({
+    chain: studionet,
+    transport: custom((window as any).ethereum),
+    account: userAccount as `0x${string}`,
   });
 
   useEffect(() => {
@@ -134,21 +141,16 @@ export default function Dashboard() {
     }
   };
 
-  // Writes use walletClient (MetaMask signs the tx) — this is the correct pattern
+  // Writes use genlayer's createClient with MetaMask transport
+  // This ensures GenLayer's own calldata encoding is used (not standard EVM ABI)
   const sendWrite = async (functionName: string, args: any[], value: bigint = BigInt(0)) => {
-    if (!walletClient || !account) throw new Error("Wallet not connected");
-    return await walletClient.writeContract({
+    if (!account) throw new Error("Wallet not connected");
+    const writeClient = getWriteClient(account);
+    return await writeClient.writeContract({
       address: CONTRACT_ADDRESS as `0x${string}`,
-      abi: [
-        { type: "function", name: "create_bounty", inputs: [{ name: "bounty_json", type: "string" }], outputs: [], stateMutability: "payable" },
-        { type: "function", name: "submit_translation", inputs: [{ name: "bounty_id", type: "string" }, { name: "submission_json", type: "string" }], outputs: [], stateMutability: "nonpayable" },
-        { type: "function", name: "review_translation", inputs: [{ name: "submission_id", type: "string" }], outputs: [{ name: "", type: "string" }], stateMutability: "nonpayable" },
-      ],
       functionName,
       args,
       value,
-      account: account as `0x${string}`,
-      chain: studionet,
     });
   };
 
