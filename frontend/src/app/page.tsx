@@ -28,20 +28,22 @@ export default function Dashboard() {
     translated_text: "", translator_notes: "", glossary_choices: "", cultural_context_notes: ""
   });
 
-  // Read-only client: direct HTTP — no MetaMask, no CORS issues on Vercel
+  // Read-only client: direct HTTP — no MetaMask needed
   const getReadClient = () => createClient({
     chain: studionet,
     transport: http(RPC_URL),
   });
 
-  // Write client: uses `provider` pattern (proven by cogniflux)
+  // Write client: MetaMask signs via provider pattern
   const getWriteClient = (userAccount: string) => createClient({
     chain: studionet,
     provider: (window as any).ethereum,
     account: userAccount as `0x${string}`,
   });
 
+  // Load public data immediately on page load — no wallet required
   useEffect(() => {
+    fetchBounties();
     checkWalletConnection();
   }, []);
 
@@ -90,13 +92,20 @@ export default function Dashboard() {
       const bal = await wClient.getBalance({ address: accounts[0] });
       setBalance(Number(formatEther(bal)).toFixed(2));
 
-      await fetchBounties();
+      // Load user-specific submissions after connecting
+      await fetchMySubmissions(accounts[0]);
     } catch (err: any) {
       console.error(err);
       alert("Connection failed: " + err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const requireWallet = async (): Promise<boolean> => {
+    if (account) return true;
+    await connectWallet();
+    return !!account;
   };
 
   const fetchBalance = async (wClient?: any) => {
@@ -111,7 +120,7 @@ export default function Dashboard() {
     }
   };
 
-  // Reads use HTTP transport directly — no MetaMask, no CORS issues
+  // PUBLIC: fetch all bounties — no wallet needed
   const fetchBounties = async () => {
     try {
       const rClient = getReadClient();
@@ -126,14 +135,16 @@ export default function Dashboard() {
     }
   };
 
-  const fetchMySubmissions = async () => {
-    if (!account) return;
+  // PRIVATE: fetch only the connected user's submissions
+  const fetchMySubmissions = async (addr?: string) => {
+    const target = addr || account;
+    if (!target) return;
     try {
       const rClient = getReadClient();
       const res = await rClient.readContract({
         address: CONTRACT_ADDRESS as `0x${string}`,
         functionName: "get_user_submissions",
-        args: [account],
+        args: [target],
       });
       setUserSubmissions(JSON.parse(res as string));
     } catch (err) {
@@ -141,8 +152,6 @@ export default function Dashboard() {
     }
   };
 
-  // Writes use genlayer's createClient with MetaMask transport
-  // This ensures GenLayer's own calldata encoding is used (not standard EVM ABI)
   const sendWrite = async (functionName: string, args: any[], value: bigint = BigInt(0)) => {
     if (!account) throw new Error("Wallet not connected");
     const writeClient = getWriteClient(account);
@@ -166,6 +175,7 @@ export default function Dashboard() {
 
   const handleCreateBounty = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!account) { await connectWallet(); return; }
     try {
       setLoading(true);
       const hash = await sendWrite("create_bounty", [JSON.stringify(bountyForm)], parseEther(bountyForm.reward_amount.toString()));
@@ -185,6 +195,7 @@ export default function Dashboard() {
   const handleSubmitTranslation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedBounty) return;
+    if (!account) { await connectWallet(); return; }
     try {
       setLoading(true);
       const hash = await sendWrite("submit_translation", [selectedBounty.bounty_id, JSON.stringify(submissionForm)]);
@@ -192,6 +203,7 @@ export default function Dashboard() {
       await waitForTx(hash);
       alert("Translation submitted successfully!");
       await fetchBounties();
+      await fetchAllSubmissions();
       await fetchBalance();
       setSelectedBounty(null);
     } catch (err: any) {
@@ -202,6 +214,7 @@ export default function Dashboard() {
   };
 
   const handleReviewTranslation = async (submissionId: string) => {
+    if (!account) { await connectWallet(); return; }
     try {
       setLoading(true);
       const hash = await sendWrite("review_translation", [submissionId]);
@@ -209,6 +222,7 @@ export default function Dashboard() {
       await waitForTx(hash);
       alert("Review complete! Check your submissions for the verdict.");
       await fetchMySubmissions();
+      await fetchAllSubmissions();
       await fetchBounties();
       await fetchBalance();
     } catch (err: any) {
@@ -218,43 +232,62 @@ export default function Dashboard() {
     }
   };
 
-  if (!account) {
-    return (
-      <div className="container hero-container">
-        <h1 className="hero-title">LinguaNova Protocol</h1>
-        <p className="hero-subtitle">
-          THE DECENTRALIZED TRANSLATION VERIFICATION NETWORK.
-          <br /><br />
-          Translators submit work. GenLayer AI validators independently judge quality, accuracy, and tone to reach on-chain consensus for payment and reputation.
-        </p>
-        <button className="btn-primary hero-btn" onClick={connectWallet} disabled={loading}>
-          {loading ? "INITIALIZING NEURAL LINK..." : "CONNECT METAMASK"}
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="container">
+      {/* ── HEADER ── */}
       <div className="header">
         <div className="header-title-container">
           <h2 className="header-title">LinguaNova Protocol</h2>
           <div className="header-subtitle">GENLAYER VERIFICATION NETWORK</div>
         </div>
         <div className="header-badge-container">
-          <span className="badge badge-account">
-            {balance} GEN | {account.substring(0, 6)}...{account.substring(38)}
-          </span>
-          <button className="btn-secondary btn-disconnect" onClick={() => setAccount(null)}>DISCONNECT</button>
+          {account ? (
+            <>
+              <span className="badge badge-account">
+                {balance} GEN | {account.substring(0, 6)}...{account.substring(38)}
+              </span>
+              <button className="btn-secondary btn-disconnect" onClick={() => { setAccount(null); setWalletClient(null); setUserSubmissions([]); }}>
+                DISCONNECT
+              </button>
+            </>
+          ) : (
+            <button className="btn-primary" onClick={connectWallet} disabled={loading}>
+              {loading ? "CONNECTING..." : "CONNECT WALLET"}
+            </button>
+          )}
         </div>
       </div>
 
+      {/* ── HERO BANNER (shown only when not connected) ── */}
+      {!account && (
+        <div style={{ textAlign: "center", padding: "2rem 1rem", borderBottom: "1px solid #1e293b", marginBottom: "1rem" }}>
+          <p style={{ color: "#94a3b8", maxWidth: "600px", margin: "0 auto", lineHeight: "1.7" }}>
+            Translators submit work. GenLayer AI validators independently judge quality, accuracy, and tone to reach on-chain consensus for payment and reputation.
+            <br /><br />
+            <span style={{ color: "#38bdf8" }}>Browse bounties freely below — connect your wallet to post or submit.</span>
+          </p>
+        </div>
+      )}
+
+      {/* ── NAV TABS ── */}
       <div className="nav-tabs">
-        <div className={`nav-tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); fetchBounties(); fetchBalance(); }}>Browse Bounties</div>
-        <div className={`nav-tab ${activeTab === 'post' ? 'active' : ''}`} onClick={() => { setActiveTab('post'); fetchBalance(); }}>Post a Bounty</div>
-        <div className={`nav-tab ${activeTab === 'my_submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('my_submissions'); fetchMySubmissions(); fetchBalance(); }}>My Submissions</div>
+        <div className={`nav-tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); fetchBounties(); if (account) fetchBalance(); }}>
+          Browse Bounties
+        </div>
+        <div className={`nav-tab ${activeTab === 'submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('submissions'); fetchBounties(); if (account) fetchBalance(); }}>
+          All Submissions
+        </div>
+        <div className={`nav-tab ${activeTab === 'post' ? 'active' : ''}`} onClick={() => { setActiveTab('post'); if (account) fetchBalance(); }}>
+          Post a Bounty
+        </div>
+        {account && (
+          <div className={`nav-tab ${activeTab === 'my_submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('my_submissions'); fetchMySubmissions(); fetchBalance(); }}>
+            My Submissions
+          </div>
+        )}
       </div>
 
+      {/* ── LOADING ── */}
       {loading && (
         <div style={{ textAlign: "center", margin: "2rem 0" }}>
           <div className="loading-spinner"></div>
@@ -262,10 +295,11 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ── BROWSE BOUNTIES (public) ── */}
       {!loading && activeTab === 'browse' && !selectedBounty && (
         <div>
           <h3>Open Translation Bounties</h3>
-          {bounties.length === 0 ? <p>No bounties available right now.</p> : (
+          {bounties.length === 0 ? <p style={{ color: "#94a3b8" }}>No bounties available right now.</p> : (
             <div className="grid">
               {bounties.map(b => (
                 <div key={b.bounty_id} className="card">
@@ -286,6 +320,7 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ── BOUNTY DETAIL + SUBMISSION FORM ── */}
       {!loading && selectedBounty && (
         <div className="card">
           <button className="btn-secondary" style={{ marginBottom: "1rem" }} onClick={() => setSelectedBounty(null)}>← Back</button>
@@ -312,6 +347,11 @@ export default function Dashboard() {
           {(selectedBounty.status === 'OPEN' || selectedBounty.status === 'IN_PROGRESS') && (
             <form onSubmit={handleSubmitTranslation} style={{ marginTop: "2rem", borderTop: "1px solid #334155", paddingTop: "2rem" }}>
               <h4>Submit Translation</h4>
+              {!account && (
+                <p style={{ color: "#f59e0b", marginBottom: "1rem", fontSize: "0.9rem" }}>
+                  ⚠️ You need to connect your wallet to submit a translation.
+                </p>
+              )}
               <textarea
                 rows={5}
                 placeholder="Enter your translation here..."
@@ -325,53 +365,101 @@ export default function Dashboard() {
                 value={submissionForm.translator_notes}
                 onChange={e => setSubmissionForm({...submissionForm, translator_notes: e.target.value})}
               />
-              <button type="submit" className="btn-primary">Submit to Validators</button>
+              <button type="submit" className="btn-primary">
+                {account ? "Submit to Validators" : "Connect Wallet & Submit"}
+              </button>
             </form>
           )}
         </div>
       )}
 
-      {!loading && activeTab === 'post' && (
-        <div className="card" style={{ maxWidth: "800px", margin: "0 auto" }}>
-          <h3>Create Translation Bounty</h3>
-          <form onSubmit={handleCreateBounty}>
+      {/* ── ALL SUBMISSIONS (public — derived from bounties data) ── */}
+      {!loading && activeTab === 'submissions' && (
+        <div>
+          <h3>All Submissions</h3>
+          <p style={{ color: "#94a3b8", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
+            Showing submission activity across all bounties on the network.
+          </p>
+          {bounties.length === 0 ? <p style={{ color: "#94a3b8" }}>No bounties on the network yet.</p> : (
             <div className="grid">
-              <div>
-                <label className="detail-label">Title</label>
-                <input required value={bountyForm.title} onChange={e => setBountyForm({...bountyForm, title: e.target.value})} placeholder="e.g., Translate Medical Abstract" />
-              </div>
-              <div>
-                <label className="detail-label">Reward Amount (GEN)</label>
-                <input type="number" required value={bountyForm.reward_amount} onChange={e => setBountyForm({...bountyForm, reward_amount: e.target.value})} />
-              </div>
+              {bounties.map(b => (
+                <div key={b.bounty_id} className="card">
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                    <h4>{b.title}</h4>
+                    <span className={`badge ${b.status === 'OPEN' ? 'badge-open' : 'badge-in-progress'}`}>{b.status}</span>
+                  </div>
+                  <div className="detail-row"><span className="detail-label">Route</span> <span>{b.source_language} ➔ {b.target_language}</span></div>
+                  <div className="detail-row"><span className="detail-label">Reward</span> <span className="text-success">{b.reward_amount} GEN</span></div>
+                  <div className="detail-row"><span className="detail-label">Domain</span> <span>{b.domain}</span></div>
+                  <div className="detail-row">
+                    <span className="detail-label">Submissions</span>
+                    <span style={{ color: "#38bdf8", fontWeight: 600 }}>
+                      {b.submission_count ?? (b.submissions ? Object.keys(b.submissions).length : 0)}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#0f172a", borderRadius: "6px" }}>
+                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b" }}>Source text preview:</p>
+                    <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
+                      {b.source_text?.substring(0, 120)}{b.source_text?.length > 120 ? "..." : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
             </div>
-
-            <div className="grid">
-              <div>
-                <label className="detail-label">Source Language</label>
-                <input required value={bountyForm.source_language} onChange={e => setBountyForm({...bountyForm, source_language: e.target.value})} />
-              </div>
-              <div>
-                <label className="detail-label">Target Language</label>
-                <input required value={bountyForm.target_language} onChange={e => setBountyForm({...bountyForm, target_language: e.target.value})} />
-              </div>
-            </div>
-
-            <label className="detail-label">Source Text</label>
-            <textarea rows={4} required value={bountyForm.source_text} onChange={e => setBountyForm({...bountyForm, source_text: e.target.value})}></textarea>
-
-            <label className="detail-label">Tone &amp; Quality Requirements (Guides the Validators)</label>
-            <input value={bountyForm.tone_requirements} onChange={e => setBountyForm({...bountyForm, tone_requirements: e.target.value})} placeholder="e.g., Formal, professional, no slang" />
-
-            <button type="submit" className="btn-primary" style={{ marginTop: "1rem" }}>Post Bounty to Network</button>
-          </form>
+          )}
         </div>
       )}
 
-      {!loading && activeTab === 'my_submissions' && (
+      {/* ── POST A BOUNTY (wallet required) ── */}
+      {!loading && activeTab === 'post' && (
+        <div className="card" style={{ maxWidth: "800px", margin: "0 auto" }}>
+          <h3>Create Translation Bounty</h3>
+          {!account ? (
+            <div style={{ textAlign: "center", padding: "2rem" }}>
+              <p style={{ color: "#94a3b8", marginBottom: "1.5rem" }}>You need to connect your wallet to post a bounty.</p>
+              <button className="btn-primary" onClick={connectWallet}>Connect Wallet</button>
+            </div>
+          ) : (
+            <form onSubmit={handleCreateBounty}>
+              <div className="grid">
+                <div>
+                  <label className="detail-label">Title</label>
+                  <input required value={bountyForm.title} onChange={e => setBountyForm({...bountyForm, title: e.target.value})} placeholder="e.g., Translate Medical Abstract" />
+                </div>
+                <div>
+                  <label className="detail-label">Reward Amount (GEN)</label>
+                  <input type="number" required value={bountyForm.reward_amount} onChange={e => setBountyForm({...bountyForm, reward_amount: e.target.value})} />
+                </div>
+              </div>
+
+              <div className="grid">
+                <div>
+                  <label className="detail-label">Source Language</label>
+                  <input required value={bountyForm.source_language} onChange={e => setBountyForm({...bountyForm, source_language: e.target.value})} />
+                </div>
+                <div>
+                  <label className="detail-label">Target Language</label>
+                  <input required value={bountyForm.target_language} onChange={e => setBountyForm({...bountyForm, target_language: e.target.value})} />
+                </div>
+              </div>
+
+              <label className="detail-label">Source Text</label>
+              <textarea rows={4} required value={bountyForm.source_text} onChange={e => setBountyForm({...bountyForm, source_text: e.target.value})}></textarea>
+
+              <label className="detail-label">Tone &amp; Quality Requirements (Guides the Validators)</label>
+              <input value={bountyForm.tone_requirements} onChange={e => setBountyForm({...bountyForm, tone_requirements: e.target.value})} placeholder="e.g., Formal, professional, no slang" />
+
+              <button type="submit" className="btn-primary" style={{ marginTop: "1rem" }}>Post Bounty to Network</button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* ── MY SUBMISSIONS (wallet required) ── */}
+      {!loading && activeTab === 'my_submissions' && account && (
         <div>
           <h3>My Translation Submissions</h3>
-          {userSubmissions.length === 0 ? <p>You haven&apos;t submitted any translations yet.</p> : (
+          {userSubmissions.length === 0 ? <p style={{ color: "#94a3b8" }}>You haven&apos;t submitted any translations yet.</p> : (
             <div className="grid">
               {userSubmissions.map(sub => (
                 <div key={sub.submission_id} className="card">
