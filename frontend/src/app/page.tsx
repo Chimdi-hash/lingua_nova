@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [balance, setBalance] = useState<string>("0.00");
   const [loading, setLoading] = useState(false);
   const [bounties, setBounties] = useState<any[]>([]);
+  const [allSubmissions, setAllSubmissions] = useState<any[]>([]);
   const [userSubmissions, setUserSubmissions] = useState<any[]>([]);
   const [selectedBounty, setSelectedBounty] = useState<any | null>(null);
 
@@ -44,6 +45,7 @@ export default function Dashboard() {
   // Load public data immediately on page load — no wallet required
   useEffect(() => {
     fetchBounties();
+    fetchAllSubmissions();
     checkWalletConnection();
   }, []);
 
@@ -132,6 +134,45 @@ export default function Dashboard() {
       setBounties(JSON.parse(res as string));
     } catch (err) {
       console.error("fetchBounties error:", err);
+    }
+  };
+
+  // PUBLIC: fetch all submissions by looking up submission IDs across bounties — no wallet needed
+  const fetchAllSubmissions = async () => {
+    try {
+      const rClient = getReadClient();
+      const res = await rClient.readContract({
+        address: CONTRACT_ADDRESS as `0x${string}`,
+        functionName: "get_all_bounties",
+        args: [],
+      });
+      const allBounties = JSON.parse(res as string);
+      
+      let subIds: string[] = [];
+      for (const b of allBounties) {
+        if (b.submissions && Array.isArray(b.submissions)) {
+          subIds.push(...b.submissions);
+        }
+      }
+      
+      const promises = subIds.map(async (sid) => {
+        const sRes = await rClient.readContract({
+          address: CONTRACT_ADDRESS as `0x${string}`,
+          functionName: "get_submission",
+          args: [sid],
+        });
+        return JSON.parse(sRes as string);
+      });
+      
+      const allSubs = await Promise.all(promises);
+      allSubs.sort((a, b) => {
+        const idA = parseInt(a.submission_id.split('-')[1] || "0");
+        const idB = parseInt(b.submission_id.split('-')[1] || "0");
+        return idB - idA;
+      });
+      setAllSubmissions(allSubs);
+    } catch (err) {
+      console.error("fetchAllSubmissions error:", err);
     }
   };
 
@@ -274,7 +315,7 @@ export default function Dashboard() {
         <div className={`nav-tab ${activeTab === 'browse' ? 'active' : ''}`} onClick={() => { setActiveTab('browse'); fetchBounties(); if (account) fetchBalance(); }}>
           Browse Bounties
         </div>
-        <div className={`nav-tab ${activeTab === 'submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('submissions'); fetchBounties(); if (account) fetchBalance(); }}>
+        <div className={`nav-tab ${activeTab === 'submissions' ? 'active' : ''}`} onClick={() => { setActiveTab('submissions'); fetchAllSubmissions(); if (account) fetchBalance(); }}>
           All Submissions
         </div>
         <div className={`nav-tab ${activeTab === 'post' ? 'active' : ''}`} onClick={() => { setActiveTab('post'); if (account) fetchBalance(); }}>
@@ -378,33 +419,46 @@ export default function Dashboard() {
         <div>
           <h3>All Submissions</h3>
           <p style={{ color: "#94a3b8", fontSize: "0.9rem", marginBottom: "1.5rem" }}>
-            Showing submission activity across all bounties on the network.
+            Showing the actual translation submissions made across the network.
           </p>
-          {bounties.length === 0 ? <p style={{ color: "#94a3b8" }}>No bounties on the network yet.</p> : (
+          {allSubmissions.length === 0 ? <p style={{ color: "#94a3b8" }}>No submissions yet.</p> : (
             <div className="grid">
-              {bounties.map(b => (
-                <div key={b.bounty_id} className="card">
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-                    <h4>{b.title}</h4>
-                    <span className={`badge ${b.status === 'OPEN' ? 'badge-open' : 'badge-in-progress'}`}>{b.status}</span>
+              {allSubmissions.map((sub: any) => {
+                const bounty = bounties.find(b => b.bounty_id === sub.bounty_id);
+                const reward = bounty ? bounty.reward_amount : "?";
+                
+                return (
+                  <div key={sub.submission_id} className="card">
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
+                      <h4>Bounty: {sub.bounty_id}</h4>
+                      <span className={`badge ${
+                        sub.status === 'SUBMITTED' ? 'badge-in-progress' :
+                        sub.status === 'APPROVED' ? 'badge-approved' :
+                        sub.status === 'REJECTED' ? 'badge-rejected' : 'badge-review'
+                      }`}>{sub.status}</span>
+                    </div>
+                    
+                    <div className="detail-row"><span className="detail-label">Translator</span> <span style={{ fontSize: "0.8rem", wordBreak: "break-all" }}>{sub.translator}</span></div>
+                    
+                    <div style={{ background: "#0f172a", padding: "0.75rem", borderRadius: "6px", marginTop: "0.75rem" }}>
+                      <p style={{ margin: 0, fontSize: "0.85rem", color: "#cbd5e1" }}>{sub.translated_text}</p>
+                    </div>
+                    
+                    {sub.payment_status && sub.payment_status !== 'PENDING' && (
+                      <div className="detail-row" style={{ marginTop: "1rem", borderTop: "1px solid #1e293b", paddingTop: "0.75rem" }}>
+                        <span className="detail-label">Payment Result</span>
+                        {sub.payment_status === 'PAID' ? (
+                          <span className="text-success" style={{ fontWeight: 600 }}>{reward} GEN Paid to Translator</span>
+                        ) : sub.payment_status === 'BURNED' ? (
+                          <span className="text-danger" style={{ fontWeight: 600 }}>{reward} GEN Burned (Rejected)</span>
+                        ) : (
+                          <span>{sub.payment_status}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <div className="detail-row"><span className="detail-label">Route</span> <span>{b.source_language} ➔ {b.target_language}</span></div>
-                  <div className="detail-row"><span className="detail-label">Reward</span> <span className="text-success">{b.reward_amount} GEN</span></div>
-                  <div className="detail-row"><span className="detail-label">Domain</span> <span>{b.domain}</span></div>
-                  <div className="detail-row">
-                    <span className="detail-label">Submissions</span>
-                    <span style={{ color: "#38bdf8", fontWeight: 600 }}>
-                      {b.submission_count ?? (b.submissions ? Object.keys(b.submissions).length : 0)}
-                    </span>
-                  </div>
-                  <div style={{ marginTop: "0.75rem", padding: "0.75rem", background: "#0f172a", borderRadius: "6px" }}>
-                    <p style={{ margin: 0, fontSize: "0.8rem", color: "#64748b" }}>Source text preview:</p>
-                    <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.85rem", color: "#94a3b8" }}>
-                      {b.source_text?.substring(0, 120)}{b.source_text?.length > 120 ? "..." : ""}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
