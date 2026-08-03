@@ -72,6 +72,7 @@ class LinguaNova(gl.Contract):
         data["status"] = "OPEN"
         data["submissions"] = []
         data["reference_status"] = "NOT_PROVIDED"
+        data["escrow_balance"] = reward_amount
 
         if data.get("reference_url") and data.get("reference_hash"):
             data["reference_status"] = "PENDING_VERIFICATION"
@@ -133,7 +134,7 @@ class LinguaNova(gl.Contract):
         bounty = json.loads(bounty_str)
 
         if bounty["status"] not in ["OPEN", "IN_PROGRESS"]:
-            raise Exception("Bounty is not open for submissions")
+            raise Exception("Bounty is not open for submissions (may be CLOSED/Terminal)")
 
         data = json.loads(submission_json)
         translated_text = data.get("translated_text", "").strip()
@@ -282,17 +283,23 @@ Return ONLY valid JSON matching this schema exactly. Do not output markdown code
             if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
                 rep["approved_count"] += 1
                 if submission["payment_status"] == "PAID":
-                    # Use the bounty reward_amount directly — this is the actual amount held by the contract
-                    payable = float(bounty.get("reward_amount", 0))
-                    rep["total_payable_amount"] += payable
-                    protocol_stats = json.loads(self.stats["protocol"])
-                    protocol_stats["total_payable_amount"] += payable
-                    self.stats["protocol"] = json.dumps(protocol_stats)
-                    try:
-                        _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
-                    except Exception as e:
-                        protocol_stats["last_payout_error"] = str(e)
+                    current_escrow = float(bounty.get("escrow_balance", bounty.get("reward_amount", 0)))
+                    payable = min(float(bounty.get("reward_amount", 0)), current_escrow)
+                    if payable > 0:
+                        bounty["escrow_balance"] = current_escrow - payable
+                        if bounty["escrow_balance"] <= 0:
+                            bounty["status"] = "CLOSED"
+                        self.bounties[submission["bounty_id"]] = json.dumps(bounty)
+                        
+                        rep["total_payable_amount"] += payable
+                        protocol_stats = json.loads(self.stats["protocol"])
+                        protocol_stats["total_payable_amount"] += payable
                         self.stats["protocol"] = json.dumps(protocol_stats)
+                        try:
+                            _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
+                        except Exception as e:
+                            protocol_stats["last_payout_error"] = str(e)
+                            self.stats["protocol"] = json.dumps(protocol_stats)
             elif verdict == "REJECTED":
                 rep["rejected_count"] += 1
             elif verdict == "NEEDS_REVISION":
@@ -438,16 +445,23 @@ Return ONLY valid JSON matching this schema exactly:
         if verdict in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]:
             rep["approved_count"] += 1
             if submission["payment_status"] == "PAID":
-                payable = float(bounty.get("reward_amount", 0))
-                rep["total_payable_amount"] += payable
-                protocol_stats = json.loads(self.stats["protocol"])
-                protocol_stats["total_payable_amount"] += payable
-                self.stats["protocol"] = json.dumps(protocol_stats)
-                try:
-                    _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
-                except Exception as e:
-                    protocol_stats["last_payout_error"] = str(e)
+                current_escrow = float(bounty.get("escrow_balance", bounty.get("reward_amount", 0)))
+                payable = min(float(bounty.get("reward_amount", 0)), current_escrow)
+                if payable > 0:
+                    bounty["escrow_balance"] = current_escrow - payable
+                    if bounty["escrow_balance"] <= 0:
+                        bounty["status"] = "CLOSED"
+                    self.bounties[submission["bounty_id"]] = json.dumps(bounty)
+                    
+                    rep["total_payable_amount"] += payable
+                    protocol_stats = json.loads(self.stats["protocol"])
+                    protocol_stats["total_payable_amount"] += payable
                     self.stats["protocol"] = json.dumps(protocol_stats)
+                    try:
+                        _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
+                    except Exception as e:
+                        protocol_stats["last_payout_error"] = str(e)
+                        self.stats["protocol"] = json.dumps(protocol_stats)
         elif verdict == "REJECTED":
             rep["rejected_count"] += 1
 
@@ -556,6 +570,8 @@ Return ONLY valid JSON matching this schema exactly:
             return (
                 leader_result.calldata.get("dispute_decision") == my_res.get("dispute_decision")
                 and leader_result.calldata.get("new_submission_decision") == my_res.get("new_submission_decision")
+                and leader_result.calldata.get("release_payment") == my_res.get("release_payment")
+                and leader_result.calldata.get("adjusted_payment_amount") == my_res.get("adjusted_payment_amount")
             )
 
         dispute_review_data = glvm.run_nondet_unsafe(leader_fn, validator_fn)
@@ -572,8 +588,20 @@ Return ONLY valid JSON matching this schema exactly:
             try:
                 bounty_str = self.bounties.get(submission["bounty_id"])
                 bounty = json.loads(bounty_str)
-                payable = float(dispute_review_data.get("adjusted_payment_amount", bounty.get("reward_amount", 0)))
-                _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
+                current_escrow = float(bounty.get("escrow_balance", bounty.get("reward_amount", 0)))
+                payable = min(float(dispute_review_data.get("adjusted_payment_amount", bounty.get("reward_amount", 0))), current_escrow)
+                
+                if payable > 0:
+                    bounty["escrow_balance"] = current_escrow - payable
+                    if bounty["escrow_balance"] <= 0:
+                        bounty["status"] = "CLOSED"
+                    self.bounties[submission["bounty_id"]] = json.dumps(bounty)
+                    
+                    # Update protocol payable stat
+                    protocol_stats["total_payable_amount"] += payable
+                    self.stats["protocol"] = json.dumps(protocol_stats)
+                    
+                    _Recipient(Address(submission["translator"])).emit_transfer(value=u256(int(payable * 10**18)), on='finalized')
             except Exception as e:
                 protocol_stats["last_payout_error"] = str(e)
                 self.stats["protocol"] = json.dumps(protocol_stats)
