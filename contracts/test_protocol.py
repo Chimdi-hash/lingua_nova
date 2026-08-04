@@ -5,9 +5,10 @@ Run with: gltest contracts/test_protocol.py -v -s
 
 import pytest
 import json
-from gltest import get_contract_factory, default_account
+from gltest import get_contract_factory
 from gltest.helpers import load_fixture
 from gltest.assertions import tx_execution_succeeded
+import contracts.linguanova as linguanova_module
 
 @pytest.mark.integration
 def deploy_contract():
@@ -210,3 +211,56 @@ def test_linguanova_revision_flow():
         bounty = json.loads(contract.get_bounty(args=["B-1"]))
         assert float(bounty["escrow_balance"]) == 0
         assert bounty["status"] == "CLOSED"
+
+
+@pytest.mark.integration
+def test_linguanova_transfer_failure_preserves_escrow(monkeypatch):
+    contract = load_fixture(deploy_contract)
+    
+    bounty_req = {
+        "title": "Translate short greeting",
+        "source_text": "Hello world",
+        "source_language": "English",
+        "target_language": "Spanish",
+        "domain": "GENERAL",
+        "tone_requirements": "Friendly",
+        "glossary_terms": "",
+        "quality_requirements": "Must sound natural",
+        "reward_amount": 10.0,
+        "currency": "GEN"
+    }
+    
+    # Attach 10 GEN
+    contract.create_bounty(args=[json.dumps(bounty_req)], value=int(10 * 10**18))
+    
+    submission_req = {
+        "translated_text": "Hola mundo",
+        "translator_notes": "Standard",
+        "glossary_choices": "",
+        "cultural_context_notes": "",
+        "self_assessed_confidence": 100
+    }
+    contract.submit_translation(args=["B-1", json.dumps(submission_req)])
+    
+    # MOCK the emit_transfer to fail deterministically
+    def mock_emit_transfer(self, *args, **kwargs):
+        raise Exception("Mock Transfer Failure")
+        
+    monkeypatch.setattr(linguanova_module._Recipient, "emit_transfer", mock_emit_transfer)
+    
+    # Review should still execute cleanly, but hit the except block
+    contract.review_translation(
+        args=["S-1"],
+        wait_interval=10000,
+        wait_retries=20,
+    )
+    
+    # Check outcomes
+    sub = json.loads(contract.get_submission(args=["S-1"]))
+    assert sub["status"] in ["APPROVED", "APPROVED_WITH_MINOR_ISSUES"]
+    assert sub["payment_status"] == "FAILED" # Payment status should explicitly be FAILED
+    
+    bounty = json.loads(contract.get_bounty(args=["B-1"]))
+    # ESCROW SHOULD BE PRESERVED (NOT REDUCED)
+    assert float(bounty["escrow_balance"]) == 10.0
+    assert bounty["status"] == "IN_PROGRESS" # Not closed, because escrow still exists
