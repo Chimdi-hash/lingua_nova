@@ -8,7 +8,6 @@ import json
 from gltest import get_contract_factory
 from gltest.helpers import load_fixture
 from gltest.assertions import tx_execution_succeeded
-import contracts.linguanova as linguanova_module
 
 @pytest.mark.integration
 def deploy_contract():
@@ -214,8 +213,12 @@ def test_linguanova_revision_flow():
 
 
 @pytest.mark.integration
-def test_linguanova_transfer_failure_preserves_escrow(monkeypatch):
+def test_linguanova_transfer_failure_preserves_escrow():
     contract = load_fixture(deploy_contract)
+    
+    # Deploy rejector contract natively
+    rejector_factory = get_contract_factory("rejector", directory="contracts")
+    rejector_contract = rejector_factory.deploy()
     
     bounty_req = {
         "title": "Translate short greeting",
@@ -240,15 +243,13 @@ def test_linguanova_transfer_failure_preserves_escrow(monkeypatch):
         "cultural_context_notes": "",
         "self_assessed_confidence": 100
     }
-    contract.submit_translation(args=["B-1", json.dumps(submission_req)])
     
-    # MOCK the emit_transfer to fail deterministically
-    def mock_emit_transfer(self, *args, **kwargs):
-        raise Exception("Mock Transfer Failure")
-        
-    monkeypatch.setattr(linguanova_module._Recipient, "emit_transfer", mock_emit_transfer)
+    # Use rejector contract as the translator (this address has no payable fallback)
+    # The transaction will use the rejector contract's address as the sender
+    contract.submit_translation(args=["B-1", json.dumps(submission_req)], from_=rejector_contract.address)
     
-    # Review should still execute cleanly, but hit the except block
+    # Review should execute cleanly, but the payout inside will natively fail
+    # because rejector_contract cannot receive GEN.
     contract.review_translation(
         args=["S-1"],
         wait_interval=10000,
