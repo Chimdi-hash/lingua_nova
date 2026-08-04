@@ -6,7 +6,7 @@ import { studionet } from "genlayer-js/chains";
 import { createWalletClient, custom, http, publicActions, parseEther, formatEther } from "viem";
 
 // Contract Address from Env or Fallback
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x8a00E0F2DB8AF8A9A97055a159fcf6694f907FEB";
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || "0x336bD3718079B64e7700200f7ff7b18aB0215698";
 const RPC_URL = "https://studio.genlayer.com/api";
 
 export default function Dashboard() {
